@@ -9,11 +9,13 @@ numpy = "~=1.23"
 pandas = "~=1.5"
 requests = "~=2.28"
 ta = "~=0.10"
-scipy = "*"
+scipy = "~=1.9"
+metatrader5 = "~=5.0"
 
 [dev-packages]
-ipykernel = "*"
-matplotlib = "*"
+ipykernel = "~=6.18"
+matplotlib = "~=3.6"
+autopep8 = "~=2.0"
 
 [requires]
 python_version = "3.9"
