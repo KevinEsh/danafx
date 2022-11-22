@@ -18,17 +18,13 @@ def get_settings(filepath: str) -> dict[str, str]:
     return project_settings
 
 
-# Main function
-if __name__ == '__main__':
-    # Import project settings
-    login_settings = get_settings(".settings/demo/login_settings.json")
-    trading_settings = get_settings(".settings/demo/trading_settings.json")
+def run():
     # Start MT5
-    mt5_interface.start_mt5(login_settings)
+    mt5_interface.start_session(login_settings)
     # Initialize symbols
     mt5_interface.initialize_symbols(trading_settings)
     # Select symbol to run strategy on
-    symbol_for_strategy = project_settings['symbols'][0]
+    symbol_for_strategy = trading_settings['symbols'][0]
     # Set up a previous time variable
     previous_time = 0
     # Set up a current time variable
@@ -38,9 +34,9 @@ if __name__ == '__main__':
         # Retrieve the current candle data
         candle_data = mt5_interface.query_historic_data(
             symbol=symbol_for_strategy,
-            timeframe=project_settings['timeframe'], 
+            timeframe=trading_settings['timeframe'],
             number_of_candles=1
-            )
+        )
         # Extract the timedata
         current_time = candle_data[0][0]
         # Compare against previous time
@@ -55,13 +51,23 @@ if __name__ == '__main__':
             for order in orders:
                 mt5_interface.cancel_order(order)
             # Start strategy one on selected symbol
-            strategy.strategy_one(symbol=symbol_for_strategy, timeframe=project_settings['timeframe'],
-                                  pip_size=project_settings['pip_size'])
+            strategy.strategy_one(symbol=symbol_for_strategy, timeframe=trading_settings['timeframe'],
+                                  pip_size=trading_settings['pip_size'])
         else:
             # Get positions
             positions = mt5_interface.get_open_positions()
             # Pass positions to update_trailing_stop
             for position in positions:
                 strategy.update_trailing_stop(order=position, trailing_stop_pips=10,
-                                              pip_size=project_settings['pip_size'])
+                                              pip_size=trading_settings['pip_size'])
         time.sleep(0.1)
+
+
+# Main function
+if __name__ == '__main__':
+    # Import project settings
+    login_settings = get_settings("settings/demo/login.json")
+    trading_settings = get_settings("settings/demo/trading.json")
+
+    # Start MT5
+    mt5_interface.start_session(login_settings)
