@@ -1,0 +1,16 @@
+{
+  "tickers": ["EURUSD=X"],
+  "backtest": {
+    "data_start": "2022-11-01",
+    "data_end": null,
+    "timeframe": "M30",
+    "number_of_candles": 1,
+    "symbols": ["USDJPY.a"],
+    "strategy": {
+      "name": "rsi",
+      "pip_size": 0.01,
+      "param1": null,
+      "param2": null
+    }
+  }
+}
