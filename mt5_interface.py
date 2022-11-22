@@ -14,7 +14,8 @@ def start_session(login_settings: dict[str, str]) -> bool:
     login_settings.pop("path")
     login_settings.pop("portable")
 
-    # Login to MT5
+    # Login to MT5. If you don’t do login, you’ll find that there will be times when your script will suddenly fail to pull data, for no discernable reason.
+
     if not mt5.login(**login_settings):
         raise PermissionError(f"Login failed. {mt5.last_error()}")
 
