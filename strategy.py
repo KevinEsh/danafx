@@ -1,9 +1,32 @@
 import ktrader
+from dataclasses import dataclass
 import pandas
 import numpy
 
 
-# Function to articulate strategy_one
+@dataclass
+class TradingDecision:
+    action: str  # SELL, BUY, NOTHIHNG, UPDATE, ETC
+    ...
+
+
+@dataclass
+class TradingStrategyClass:
+    """Function to strcuture any trading strategy"""
+
+    def setup_parameters(self) -> None:
+        ...
+
+    def feed_meta_info(self) -> None:
+        ...
+
+    def make_decision(self) -> TradingDecision:
+        ...
+
+    def feed_new_info(self) -> None:
+        ...
+
+
 def strategy_one(symbol, timeframe, pip_size):
     # Retrieve the required data from get_and_transform_mt5_data
     data_df = get_and_transform_mt5_data(symbol=symbol, timeframe=timeframe, number_of_candles=2, pip_size=pip_size)

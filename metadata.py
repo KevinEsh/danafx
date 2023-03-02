@@ -27,4 +27,5 @@ mt5_timeframe_book = {
 mt5_order_type_book = {
     "SELL_STOP": mt5.ORDER_TYPE_SELL_STOP,
     "BUY_STOP": mt5.ORDER_TYPE_BUY_STOP,
+    "BUY_LIMIT": mt5.ORDER_TYPE_BUY_LIMIT,
 }

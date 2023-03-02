@@ -86,6 +86,10 @@ class KTrader():
         Returns:
             _type_: _description_
         """
+
+        # Find the filling mode of symbol #TODO
+        filling_type = mt5.symbol_info(symbol).filling_mode
+
         # Create the request
         request = {
             "action": mt5.TRADE_ACTION_PENDING,

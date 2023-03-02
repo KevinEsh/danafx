@@ -11,6 +11,9 @@ requests = "~=2.28"
 ta = "~=0.10"
 scipy = "~=1.9"
 metatrader5 = "~=5.0"
+python-telegram-bot = "*"
+schedule = "*"
+pyngrok = "*"
 
 [dev-packages]
 ipykernel = "~=6.18"
