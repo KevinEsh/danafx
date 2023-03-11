@@ -28,4 +28,15 @@ mt5_order_type_book = {
     "SELL_STOP": mt5.ORDER_TYPE_SELL_STOP,
     "BUY_STOP": mt5.ORDER_TYPE_BUY_STOP,
     "BUY_LIMIT": mt5.ORDER_TYPE_BUY_LIMIT,
+    "BUY": mt5.ORDER_TYPE_BUY,  # Market Buy order
+    "SELL": mt5.ORDER_TYPE_SELL,  # Market Sell order
+    "BUY_LIMIT": mt5.ORDER_TYPE_BUY_LIMIT,  # Buy Limit pending order
+    "SELL_LIMIT": mt5.ORDER_TYPE_SELL_LIMIT,  # Sell Limit pending order
+    "BUY_STOP": mt5.ORDER_TYPE_BUY_STOP,  # Buy Stop pending order
+    "SELL_STOP": mt5.ORDER_TYPE_SELL_STOP,      # Sell Stop pending order
+    # Upon reaching the order price, a pending Buy Limit order is placed at the StopLimit price
+    "STOP_STOP_LIMIT": mt5.ORDER_TYPE_BUY_STOP_LIMIT,
+    # Upon reaching the order price, a pending Sell Limit order is placed at the StopLimit price
+    "SELL_STOP_LIMIT": mt5.ORDER_TYPE_SELL_STOP_LIMIT,
+    "CLOSE_BY": mt5.ORDER_TYPE_CLOSE_BY,      # Order to close a position by an opposite one
 }
