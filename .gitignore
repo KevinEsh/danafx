@@ -133,3 +133,6 @@ dmypy.json
 *.jpg
 *.gif
 *.png
+
+# Credentials
+login.json
