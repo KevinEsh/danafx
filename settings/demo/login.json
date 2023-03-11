@@ -1,8 +1,16 @@
 {
-  "login": 51034149,
-  "password": "efC43aKb",
-  "server": "ICMarketsSC-Demo",
-  "timeout": 10000,
-  "portable": false,
-  "path": "C:\\Program Files\\MetaTrader 5 IC Markets (SC)\\terminal64.exe"
+  "telegram_bot": {
+    "bot_token": "5755464782:AAF58OCon7yHzm4Hvh5txX4AjeGTOQ0K9Ck",
+    "ngrok_authtoken": "2MOKvNDl2mjQK1E6TWcQvX3LYOh_2eLkBVvWMV6KotmqUjnfA",
+    "ngrok_subdomain": null,
+    "port": 5000
+  },
+  "mt5_login": {
+    "login": 51136661,
+    "password": "QrfLimZv",
+    "server": "ICMarketsSC-Demo",
+    "timeout": 10000,
+    "portable": false,
+    "path": "C:\\Program Files\\MetaTrader 5 IC Markets (SC)\\terminal64.exe"
+  }
 }
