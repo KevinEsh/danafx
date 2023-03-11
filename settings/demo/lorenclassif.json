@@ -56,24 +56,28 @@
     }
   },
   "indicator_settings": {
-    "RSIIndicator": {
-      "window": 14,
-      "fillna": true,
-      "smoothing_window": 1
+    "RSISmoothIndicator": {
+      "window_rsi": 14,
+      "window_smooth": 1,
+      "rescaled": true,
+      "fillna": false
     },
     "WaveTrendIndicator": {
-      "param1": 10,
-      "param2": 11
+      "window_ema": 10,
+      "window_smooth": 11,
+      "rescaled": true,
+      "fillna": false
     },
-    "CCIIndicator": {
-      "window": 20,
-      "fillna": true,
-      "smoothing_window": 1
+    "CCISmoothIndicator": {
+      "window_cci": 20,
+      "window_smooth": 1,
+      "rescaled": true,
+      "fillna": false
     },
     "ADXIndicator": {
-      "window": 20,
-      "fillna": true
-    },
-    "as": null
+      "window_adx": 20,
+      "rescaled": true,
+      "fillna": false
+    }
   }
 }
