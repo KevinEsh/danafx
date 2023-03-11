@@ -2,11 +2,13 @@ import MetaTrader5 as mt5
 from metadata import mt5_timeframe_book, mt5_order_type_book
 from dataclasses import dataclass
 from time import sleep
-from datetime import datetime, timedelta
+from datetime import datetime
+from pandas import DataFrame, to_datetime
+from pytz import timezone
 
 
 @dataclass
-class KTrader():
+class TraderBot():
     backtest_symbols: list[str] = None
     live_trading_symbols: list[str] = None
     __orders_updated: bool = False
@@ -54,7 +56,7 @@ class KTrader():
         # Check each symbol in symbol_array to ensure it exists
         nonexistent_symbols = set(my_symbols) - set(all_symbols)
         if nonexistent_symbols:
-            raise ValueError(f"Sybmols {nonexistent_symbols} do not exist")
+            raise ValueError(f"Symbols {nonexistent_symbols} do not exist")
 
         # If it exists, enable it
         for provided_symbol in my_symbols:
@@ -162,11 +164,22 @@ class KTrader():
         }
         # Send order to MT5
         order_result = mt5.order_send(request)
+
+        if order_result[0] == 10009:
+            print(f"Order for {symbol} successful")
+        else:
+            print(f"Error placing order. ErrorCode {order_result[0]}, Error Details: {order_result}")
         return order_result[0] == 10009
 
     # Function to query previous candlestick data from MT5
 
-    def query_historic_data(self, symbol: str, timeframe: str, number_of_candles: int):
+    def query_historic_data(
+            self,
+            symbol: str,
+            timeframe: str,
+            number_of_candles: int,
+            tzone: str = "US/Central"
+    ) -> DataFrame:
         """Convert the timeframe into an MT5 friendly format
 
         Args:
@@ -178,9 +191,15 @@ class KTrader():
             _type_: _description_
         """
         mt5_timeframe = mt5_timeframe_book[timeframe]
+        cst = timezone(tzone)
+
         # Retrieve data from MT5
-        rates = mt5.copy_rates_from_pos(symbol, mt5_timeframe, 1, number_of_candles)
-        return rates
+        rates = mt5.copy_rates_from_pos(symbol, mt5_timeframe, 0, number_of_candles)
+        df_rates = DataFrame(rates)
+        df_rates['time'] = to_datetime(df_rates['time'], unit='s', utc=True)
+        df_rates['time'] = df_rates['time'].dt.tz_convert(cst)
+
+        return df_rates.set_index("time")
 
     # Function to retrieve all open orders from MT5
 
