@@ -45,37 +45,37 @@ class GraceBot:
 
         ngrok_subdomain = os.environ.get('NGROK_SUBDOMAIN')
         webhook_url = f'https://{ngrok_subdomain}.ngrok.io/{ngrok_authtoken}'
-        print(webhook_url)
+        logging(webhook_url)
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Sends explanation on how to use the bot."""
         await update.message.reply_text(
-            """
-Hi motherfucker! Ready to make some money? You can control me by sending these commands: *bold \*text*
+            f"Hi motherfucker! Ready to make some money? You can control me by sending these commands:"
+            "/ start / help - to see this message"
+            # / status[order_id] - get an updated report for an order
+            # / evaluate[symbol] - get a brief analysis on the symbol
 
+            # < b > Alert system < /b >
+            # / setalert[order_id] - set an alert if a order is at risk
+            # / unsetalert[order_id] - undo / setalert
 
-/start /help - to see this message
-/status <order_id> - get an updated report for an order
-/evaluate <symbol> - get a brief analysis on the symbol
-
-*Alert system*
-/setalert <order_id> - set an alert if a order is at risk
-/unsetalert <order_id> - undo /setalert
-
-*Trading commands*
-/buy_limit <symbol> <limit> -  place a buy limit order
-/sell_limit <symbol> <limit> - place a sell limit order
-/buy_stop <symbol> <stop> - place a buy stop order
-/sell_stop <symbol> <stop> - place a sell stop order
-            """)
+            # ** Trading commands **
+            # /buylt[symbol][limit price] - place a buy limit order
+            # / selllt[symbol][limit price] - place a sell limit order
+            # / buyst[symbol][stop price] - place a buy stop order
+            # / sellst[symbol][stop price] - place a sell stop order"
+        )
 
     async def echo(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """General response to any text send by the user
+        """
         chat_id = update.effective_chat.id
         grace_response = "fuck you! speak like a man, pussy "  # + update.message.text
         await context.bot.send_message(chat_id=chat_id, text=grace_response)
 
     async def send_order_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-
+        """Send an image of the current stock price of the order's symbol + some useful indicators
+        """
         if not context.args:
             await update.effective_message.reply_text(f"order_id not provided. Please try again.", quote=True)
             return
@@ -87,9 +87,10 @@ Hi motherfucker! Ready to make some money? You can control me by sending these c
 
         if order_id not in self.my_orders[chat_id]:
             await update.effective_message.reply_text(f"Invalid order. {order_id=} not registered")
-        else:
-            image, caption = generate_report()
-            await update.effective_message.reply_photo(image, caption, quote=True)
+            return
+
+        image, caption = generate_report()
+        await update.effective_message.reply_photo(image, caption, quote=True)
 
         # if report_type == 'table':
         #     table = await tabulate(data, headers=headers, tablefmt='orgtbl')
@@ -101,6 +102,9 @@ Hi motherfucker! Ready to make some money? You can control me by sending these c
         # else:
         #     context.bot.send_message(chat_id=update.effective_chat.id,
         #                              text="Invalid report type. Please choose 'table' or 'chart'.")
+
+    async def set_order_alert(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        context.job_queue.run_custom()
 
     async def buy_order(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Add a job to the queue."""
