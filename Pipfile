@@ -11,9 +11,9 @@ requests = "~=2.28"
 ta = "~=0.10"
 scipy = "~=1.9"
 metatrader5 = "~=5.0"
-python-telegram-bot = "*"
-schedule = "*"
-pyngrok = "*"
+python-telegram-bot = "~=20.1"
+mplfinance = "~=0.12"
+scikit-learn = "~=1.2"
 
 [dev-packages]
 ipykernel = "~=6.18"
