@@ -1,0 +1,102 @@
+{
+  "init": {
+    "n_neighbors": 15,
+    "lookback_window": 2000,
+    "neighbors_leap": 3,
+    "n_jobs": 3
+  },
+  "source_data": {
+    "index": {
+      "type": "Index"
+    },
+    "rsi14": {
+      "indicator": "RSISmoothIndicator",
+      "parameters": {
+        "window_rsi": 14,
+        "window_smooth": 1,
+        "rescaled": true,
+        "fillna": false
+      }
+    },
+    "rsi9": {
+      "indicator": "RSISmoothIndicator",
+      "parameters": {
+        "window_rsi": 9,
+        "window_smooth": 1,
+        "rescaled": true,
+        "fillna": false
+      }
+    },
+    "wt": {
+      "indicator": "WaveTrendIndicator",
+      "parameters": {
+        "window_ema": 10,
+        "window_smooth": 11,
+        "rescaled": true,
+        "fillna": false
+      }
+    },
+    "cci": {
+      "indicator": "CCISmoothIndicator",
+      "parameters": {
+        "window_cci": 20,
+        "window_smooth": 1,
+        "rescaled": true,
+        "fillna": false
+      }
+    },
+    "adx": {
+      "indicator": "ADXIndicator",
+      "parameters": {
+        "window_adx": 20,
+        "rescaled": true,
+        "fillna": false
+      }
+    }
+  },
+  "use_dynamic_exits": false,
+  "comment": "Dynamic exits attempt to let profits ride by dynamically adjusting the exit threshold based on kernel regression logic.",
+  "use_worst_case": false,
+  "comment_2": "Whether to use the worst case scenario for backtesting. This option can be useful for creating a conservative estimate that is based on close prices only, thus avoiding the effects of intrabar repainting. This option assumes that the user does not enter when the signal first appears and instead waits for the bar to close as confirmation. On larger timeframes, this can mean entering after a large move has already occurred. Leaving this option disabled is generally better for those that use this indicator as a source of confluence and prefer estimates that demonstrate discretionary mid-bar entries. Leaving this option enabled may be more consistent with traditional backtesting results.",
+  "trade_with_kernel": false,
+  "kernel_settings": {
+    "window": 8,
+    "relative_weight": 8,
+    "regression_level": 25,
+    "smoothing_lag": 2
+  },
+  "plot_settings": {
+    "color_compression": 1,
+    "show_default_exits": false,
+    "comment": "Default exits occur exactly 4 bars after an entry signal. This corresponds to the predefined length of a trade during the model's training process.",
+    "show_trade_stats": true,
+    "comment_2": "Displays the trade stats for a given configuration. Useful for optimizing the settings in the Feature Engineering section. This should NOT replace backtesting and should be used for calibration purposes only. Early Signal Flips represent instances where the model changes signals before 4 bars elapses; high values can indicate choppy (ranging) market conditions.",
+    "show_kernel_estimate": true,
+    "show_bar_colors": true,
+    "show_bar_predictions": true,
+    "use_atr_offset": false
+  },
+  "filter_settings": {
+    "volatility_filter": {
+      "active": true,
+      "threshold": null,
+      "comment": "Whether to use the trend detection filter. Threshold for detecting Trending/Ranging markets."
+    },
+    "regime_filter": {
+      "active": true,
+      "threshold": -0.1
+    },
+    "adx_filter": {
+      "active": false,
+      "threshold": 20
+    },
+    "ema_filter": {
+      "active": false,
+      "window": 20
+    },
+    "sma_filter": {
+      "active": false,
+      "window": 20
+    }
+  }
+}
