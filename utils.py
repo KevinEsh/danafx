@@ -98,15 +98,15 @@ def ADXSmoothIndicator(
 
 
 def HL2(high: Series, low: Series) -> Series:
-    return (high + low) / 2
+    return (high + low) / 2.
 
 
 def HLC3(high: Series, low: Series, close: Series) -> Series:
-    return (high + low + close) / 3
+    return (high + low + close) / 3.
 
 
 def OHLC4(open: Series, high: Series, low: Series, close: Series) -> Series:
-    return (open + high + low + close) / 4
+    return (open + high + low + close) / 4.
 
 
 def ema_trend(close: Series, ema: Series) -> Series:
@@ -140,10 +140,10 @@ if __name__ == "__main__":
     trader.initialize_symbols(["EURUSD"])
     df = trader.query_historic_data("EURUSD", "H4", 100)
     df["hlc3"] = HLC3(df.high, df.low, df.close)
-    df["rsi"] = RSISmoothIndicator(df.close, fillna=True)
-    df["cci"] = CCISmoothIndicator(df.high, df.low, df.close, fillna=True)
-    df["wt"] = WaveTrendIndicator(df.hlc3, fillna=True)
-    df["adx"] = ADXSmoothIndicator(df.high, df.low, df.close, fillna=True)
+    df["rsi"] = RSISmoothIndicator(df.close, fillna=False)
+    df["cci"] = CCISmoothIndicator(df.high, df.low, df.close, fillna=False)
+    df["wt"] = WaveTrendIndicator(df.hlc3, fillna=False)
+    df["adx"] = ADXSmoothIndicator(df.high, df.low, df.close, fillna=False)
 
     plot(df[["rsi", "cci", "wt", "adx"]])
-    savefig("test2.jpeg")
+    savefig("test3.jpeg")
