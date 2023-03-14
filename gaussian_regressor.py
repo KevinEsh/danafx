@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
+
 class GaussianStockRegressor:
     def __init__(self) -> None:
         # TODO: poner de parametros los modificadores del kernel
@@ -27,36 +28,63 @@ class GaussianStockRegressor:
 
 
 if __name__ == "__main__":
-    from sklearn.datasets import make_regression
     import matplotlib.pyplot as plt
+    from preprocessing import preprocess_stock_data
+    from setup import get_settings
+    from ktrader import TraderBot
+    from numpy import newaxis, arange
+    # from matplotlib.pyplot import plot, savefig
 
-    # Generate some random data
-    X, y = make_regression(n_samples=70, n_features=1, noise=10, random_state=0)
+    strategy_settings = get_settings("settings\demo\lorentzian_classifier.json")
+
+    # Import project settings
+    login_settings = get_settings("settings/demo/login.json")
+    # trading_settings = get_settings("settings/demo/trading.json")
+    mt5_login_settings = login_settings["mt5_login"]
+
+    trader = TraderBot()
+    trader.start_session(mt5_login_settings)
+    trader.initialize_symbols(["EURUSD"])
+
+    df = trader.query_historic_data("EURUSD", "H1", 2000)
+    source_columns = strategy_settings["source_data"].keys()
+
+    # X, y = preprocess_stock_data(df, source_columns, True, False)
+    # data = arange(0, 500, 1)[:, newaxis]
+    add_indicators = ["index", "hlc3", "rsi14", "rsi9", "cci", "wt", "adx"]
+    target = df.close.values
+    data = preprocess_stock_data(df, add_indicators)
+
+    train_data = data[50:1500, :]
+    train_target = target[50:1500]
+
+    test_data = data[1300:, :]
+    test_target = target[1300:]
 
     # Initialize the Gaussian Process Regressor with the Rational Quadratic Kernel
+    noice = WhiteKernel(1e-4, noise_level_bounds=(1e-6, 1e-3))
     esq_kernel = ExpSineSquared(1.0, 15.0, periodicity_bounds=(1e-3, 1e4))
-    rq_kernel = 1.0 * RationalQuadratic(alpha=8., length_scale=8.0)
-    rbf_kernel = 1.0e-1 * RBF(length_scale=1,  length_scale_bounds=(1e-5, 1.0)) 
-    gp = GaussianProcessRegressor(kernel=rq_kernel, random_state=0)
-    gp_rbf = GaussianProcessRegressor(kernel=rbf_kernel * esq_kernel, random_state=0)
+    rq_kernel = 1.0 * RationalQuadratic(alpha=5.5, length_scale=8.0) + noice
+    rbf_kernel = 1.0e-1 * RBF(length_scale=1,  length_scale_bounds=(1e-5, 1.0))
+    gp = GaussianProcessRegressor(kernel=rq_kernel)  # , random_state=0)
+    # gp_rbf = GaussianProcessRegressor(kernel=rbf_kernel * esq_kernel, random_state=0)
 
     # Fit the GP to the data
-    gp.fit(X, y)
-    gp_rbf.fit(X, y)
+    gp.fit(train_data, train_target)
+    # gp_rbf.fit(train_data, train_target)
 
-    # Predict the target variable at some new inputs
-    X_new = np.linspace(-2, 2, 100)[:, np.newaxis]
-    y_pred2, std2 = gp_rbf.predict(X_new, return_std=True)
-    y_pred, std = gp.predict(X_new, return_std=True)
+    # y_pred2, std2 = gp_rbf.predict(test_data, return_std=True)
+    y_pred, std = gp.predict(test_data, return_std=True)
 
     # Visualize the results
-    plt.scatter(X, y, color='black', label='Data', alpha=0.4)
-    plt.plot(X_new, y_pred, color='blue', label='Prediction RQ')
-    plt.plot(X_new, y_pred2, color='red', label='Prediction RBF')
-    plt.fill_between(X_new.ravel(), y_pred - std, y_pred + std, alpha=0.1, color='blue')
-    plt.fill_between(X_new.ravel(), y_pred2 - std2, y_pred2 + std2, alpha=0.1, color='red')
+    # plt.scatter(data[:, 0], target, color='black', label='Data', alpha=0.4)
+    plt.plot(data[:, 0], target, color='black', label='Data', alpha=0.4)
+    plt.plot(test_data[:, 0], y_pred, color='blue', label='Prediction RQ')
+    # plt.plot(test_data, y_pred2, color='red', label='Prediction RBF')
+    # plt.fill_between(test_data[:, 0].ravel(), y_pred - std, y_pred + std, alpha=0.1, color='blue')
+    # plt.fill_between(test_data.ravel(), y_pred2 - std2, y_pred2 + std2, alpha=0.1, color='red')
     plt.legend()
-    plt.show()
+    plt.savefig("test1.jpeg")
 
     # rng = np.random.RandomState(0)
     # data = np.linspace(0, 50, num=1_000).reshape(-1, 1)
@@ -111,4 +139,4 @@ if __name__ == "__main__":
     # plt.ylabel("target")
     # _ = plt.title("Comparison between kernel ridge and gaussian process regressor")
 
-    plt.savefig("gr.jpeg")
+    # plt.savefig("gr.jpeg")
