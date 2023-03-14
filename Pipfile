@@ -12,7 +12,7 @@ ta = "~=0.10"
 scipy = "~=1.9"
 metatrader5 = "~=5.0"
 python-telegram-bot = "~=20.1"
-mplfinance = "~=0.12"
+mplfinance = "*"
 scikit-learn = "~=1.2"
 
 [dev-packages]
