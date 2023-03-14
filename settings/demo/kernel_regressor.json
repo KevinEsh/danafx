@@ -1,0 +1,16 @@
+{
+  "rbf_kernel": {
+    "type": "RBF",
+    "init": {
+      "length_scale": 8,
+      "lag": 2
+    }
+  },
+  "rq_kenel": {
+    "type": "RationalQuadratic",
+    "init": {
+      "alpha": 8.0,
+      "length_scale": 8.0
+    }
+  }
+}
