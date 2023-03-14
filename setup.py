@@ -2,7 +2,6 @@ from json import load
 from os.path import exists
 from ktrader import TraderBot
 import mplfinance as fplt
-from gaussian_regressor import GaussianStockPredictor
 from utils import get_signal_labels, HLC3
 from numpy import nan
 
@@ -121,6 +120,7 @@ def plot_candlestick_chart(df_rates, symbol: str, timestamp: str) -> None:
 
 # Main function
 if __name__ == '__main__':
+    from gaussian_regressor import GaussianStockRegressor
     # Import project settings
     login_settings = get_settings("settings/demo/login.json")
     trading_settings = get_settings("settings/demo/trading.json")
