@@ -97,6 +97,42 @@ def ADXSmoothIndicator(
     return adx
 
 
+def RQKernelIndicator(
+        close: Series,
+        window: float = 8,
+        alpha: float = 1,
+) -> Series:
+    size = close.size
+    weights = (1. + 0.5 * np.arange(size) ** 2 /
+               (alpha * (window ** 2.))) ** (-alpha)
+    cum_weights = weights.cumsum()
+    c = close.values[::-1]
+    rq = np.empty(size)
+
+    for i in range(size):
+        j = size - i
+        rq[j - 1] = (c[i:] @ weights[:j]) / cum_weights[j-1]
+
+    return rq
+
+
+def RBFKernelIndicator(
+        close: Series,
+        window: float = 16
+) -> Series:
+    size = close.size
+    weights = np.exp(-0.5 * np.arange(size) ** 2 / (window ** 2))
+    cum_weights = weights.cumsum()
+    c = close.values[::-1]
+    rq = np.empty(size)
+
+    for i in range(size):
+        j = size - i
+        rq[j-1] = (c[i:] @ weights[:j]) / cum_weights[j-1]
+
+    return rq
+
+
 def HL2(high: Series, low: Series) -> Series:
     return (high + low) / 2.
 
@@ -126,7 +162,7 @@ def get_signal_labels(source: Series, window: int = -4) -> Series:
 
 
 if __name__ == "__main__":
-    from ktrader import TraderBot
+    from broker import BrokerSession
     from matplotlib.pyplot import plot, savefig
     from setup import get_settings
 
@@ -135,15 +171,21 @@ if __name__ == "__main__":
     # trading_settings = get_settings("settings/demo/trading.json")
     mt5_login_settings = login_settings["mt5_login"]
 
-    trader = TraderBot()
+    trader = BrokerSession()
     trader.start_session(mt5_login_settings)
     trader.initialize_symbols(["EURUSD"])
-    df = trader.query_historic_data("EURUSD", "H4", 100)
-    df["hlc3"] = HLC3(df.high, df.low, df.close)
-    df["rsi"] = RSISmoothIndicator(df.close, fillna=False)
-    df["cci"] = CCISmoothIndicator(df.high, df.low, df.close, fillna=False)
-    df["wt"] = WaveTrendIndicator(df.hlc3, fillna=False)
-    df["adx"] = ADXSmoothIndicator(df.high, df.low, df.close, fillna=False)
+    df = trader.query_historic_data("EURUSD", "M30", 2000)
+    # df["hlc3"] = HLC3(df.high, df.low, df.close)
+    # df["rsi"] = RSISmoothIndicator(df.close, fillna=False)
+    # df["cci"] = CCISmoothIndicator(df.high, df.low, df.close, fillna=False)
+    # df["wt"] = WaveTrendIndicator(df.hlc3, fillna=False)
+    # df["adx"] = ADXSmoothIndicator(df.high, df.low, df.close, fillna=False)
 
-    plot(df[["rsi", "cci", "wt", "adx"]])
+    df["rq"] = RQKernelIndicator(df.close)
+    df["rbf"] = RBFKernelIndicator(df.close)
+
+    print(df[["close", "rbf", "rq"]])
+
+    # plot(df[["rsi", "cci", "wt", "adx"]])
+    plot(df[["close", "rbf", "rq"]].tail(100))
     savefig("test3.jpeg")
