@@ -1,18 +1,13 @@
-import MetaTrader5 as mt5
-from metadata import mt5_timeframe_book, mt5_order_type_book
 from dataclasses import dataclass
-from time import sleep
-from datetime import datetime
 from pandas import DataFrame, to_datetime
 from pytz import timezone
+from datetime import datetime
+import MetaTrader5 as mt5
+from metadata import mt5_order_type_book, TIMEFRAMES_BOOK
 
 
 @dataclass
-class TraderBot():
-    backtest_symbols: list[str] = None
-    live_trading_symbols: list[str] = None
-    __orders_updated: bool = False
-    __open_orders: list[float] = None
+class BrokerSession():
 
     def start_session(self, login_settings: dict[str, str]) -> None:
         """Fucntion to start a Meta Trader 5 (MT5) session
@@ -40,7 +35,7 @@ class TraderBot():
             raise PermissionError(f"Login failed. {mt5.last_error()}")
         return
 
-    def initialize_symbols(self, my_symbols: list[str]) -> None:
+    def initialize_symbols(self, symbols: list[str]) -> None:
         """Function to initialize a symbol on MT5
 
         Args:
@@ -54,32 +49,31 @@ class TraderBot():
         all_symbols = [symbol.name for symbol in mt5.symbols_get()]  # TODO: crear cache
 
         # Check each symbol in symbol_array to ensure it exists
-        nonexistent_symbols = set(my_symbols) - set(all_symbols)
+        nonexistent_symbols = set(symbols) - set(all_symbols)
         if nonexistent_symbols:
             raise ValueError(f"Symbols {nonexistent_symbols} do not exist")
 
         # If it exists, enable it
-        for provided_symbol in my_symbols:
+        for provided_symbol in symbols:
             if not mt5.symbol_select(provided_symbol, True):
                 raise ValueError(f"Unable to enable symbol {provided_symbol}")
         return
 
-    def place_order(
+    def create_order(
         self,
-        order_type: str,
         symbol: str,
-        volume: float,
-        price: float,
+        ordtype: str,
+        lot_units: int,
         stop_loss: float,
         take_profit: float,
-        comment: str = "No comment"
+        deviation: int = 10,
     ) -> None:
         """Create a new order on MetaTrader5
 
         Args:
-            order_type (str): "SELL_STOP" or "BUY_STOP"
             symbol (str): Ticker name to purchase/sell
-            volume (float): Volume of the ticker to purchase/sell
+            order_type (str): "SELL_STOP" or "BUY_STOP"
+            lot_units (float): Volume of the ticker to purchase/sell
             price (float): The unitarium price to purchase/sell each stock
             stop_loss (float): #TODO
             take_profit (float): #TODO
@@ -90,35 +84,80 @@ class TraderBot():
         """
 
         # Find the filling mode of symbol #TODO
-        filling_type = mt5.symbol_info(symbol).filling_mode
+        symbol_info = mt5.symbol_info(symbol)
+
+        filling_type = symbol_info.filling_mode
+        price = (symbol_info.ask + symbol_info.bid) / 2.
+        digits = symbol_info.digits
+        # spread = symbol_info.spread
+        micro_lot = symbol_info.volume_step
+        # volume_min = symbol_info.volume_min
+        # volume_max = symbol_info.volume_max
 
         # Create the request
         request = {
-            "action": mt5.TRADE_ACTION_PENDING,
+            "action": mt5.TRADE_ACTION_DEAL,
             "symbol": symbol,
-            "volume": volume,
-            "type": mt5_order_type_book[order_type],
-            "price": round(price, 3),
-            "sl": round(stop_loss, 3),
-            "tp": round(take_profit, 3),
-            "type_filling": mt5.ORDER_FILLING_RETURN,
+            "volume": micro_lot * lot_units,
+            "type": mt5_order_type_book[ordtype],
+            "price": round(price, digits),
+            "sl": round(stop_loss, digits),
+            "tp": round(take_profit, digits),
+            "deviation": deviation,
+            "type_filling": 1,  # filling_type,
             "type_time": mt5.ORDER_TIME_GTC,
-            "comment": comment
+            "comment": f"open {symbol}",
         }
 
         # Send the order to MT5
         order_result = mt5.order_send(request)
+
         # Notify based on return outcomes
-        if order_result[0] == 10009:
-            print(f"Order for {symbol} successful")
-        else:
-            print(f"Error placing order. ErrorCode {order_result[0]}, Error Details: {order_result}")
+        if order_result.retcode != mt5.TRADE_RETCODE_DONE:
+            print(f"Error creating order. Error Code: {order_result.retcode}, Error Details: {order_result.comment}")
+            return
+
+        print(f"Successfully order created {symbol}")
+        # TODO: crear un algoritmo que sume estas ordenes a una mini-cache
         return order_result
 
-    # Function to cancel an order
+    def close_position(
+        self,
+        order: object,
+        # price: float,
+        deviation: int = 10,
+    ):
+        # Create the inverse request
+        open_request = order.request
+        close_price = mt5.symbol_info_tick(open_request.symbol).bid
+        order_type = mt5.ORDER_TYPE_BUY if open_request.type == mt5.ORDER_TYPE_SELL else mt5.ORDER_TYPE_SELL
 
-    def cancel_order(self, order_number: int) -> bool:
-        """_summary_
+        close_request = {
+            "position": order.order,
+            "action": open_request.action,
+            "symbol": open_request.symbol,
+            "volume": order.volume,
+            "type": order_type,
+            "price": close_price,
+            "deviation": deviation,
+            "type_filling": open_request.type_filling,
+            "type_time": open_request.type_time,
+            "comment": f"close {open_request.symbol}",
+        }
+
+        # Send the order to MT5
+        order_result = mt5.order_send(close_request)
+
+        # Notify based on return outcomes
+        if order_result.retcode != mt5.TRADE_RETCODE_DONE:
+            print(f"Error closing order. Error code {open_request.retcode}, Error details: {order_result.comment}")
+            return
+
+        print(f"Successfully order closed {open_request.symbol}")
+        return order_result
+
+    def cancel_order(self, order: int) -> bool:
+        """Function to cancel an order
 
         Args:
             order_number (int): _description_
@@ -129,24 +168,30 @@ class TraderBot():
         # Create the request
         request = {
             "action": mt5.TRADE_ACTION_REMOVE,
-            "order": order_number,
-            "comment": "Order Removed"
+            "order": order.order,
+            "comment": f"remove {order.symbol}"
         }
         # Send order to MT5
         order_result = mt5.order_send(request)
+
+        # Notify based on return outcomes
+        if order_result.retcode != mt5.TRADE_RETCODE_DONE:
+            print(f"Error closing order. Error Code {order_result.retcode}, Error Details: {order_result}")
+            return
+
+        print(f"Successfully order closed {order.symbol}")
         return order_result
 
     def modify_position(
         self,
-        order_number: int,
-        symbol: str,
-        new_stop_loss: float,
-        new_take_profit: float,
+        order: int,
+        new_stop_loss: float = None,
+        new_take_profit: float = None,
     ) -> bool:
         """Function to modify an open position
 
         Args:
-            order_number (int): _description_
+            order (int): _description_
             symbol (str): _description_
             new_stop_loss (float): _description_
             new_take_profit (float): _description_
@@ -157,30 +202,61 @@ class TraderBot():
         # Create the request
         request = {
             "action": mt5.TRADE_ACTION_SLTP,
-            "symbol": symbol,
+            "position": order.order,
+            "symbol": order.symbol,
             "sl": new_stop_loss,
             "tp": new_take_profit,
-            "position": order_number
         }
         # Send order to MT5
         order_result = mt5.order_send(request)
 
-        if order_result[0] == 10009:
-            print(f"Order for {symbol} successful")
-        else:
-            print(f"Error placing order. ErrorCode {order_result[0]}, Error Details: {order_result}")
-        return order_result[0] == 10009
+        # Notify based on return outcomes
+        if order_result.retcode != mt5.TRADE_RETCODE_DONE:
+            print(f"Error closing order. Error Code {order_result.retcode}, Error Details: {order_result}")
 
-    # Function to query previous candlestick data from MT5
+        print(f"Successfully order closed {order_result.symbol}")
+        return order_result
 
-    def query_historic_data(
+    def get_ticks(
+            self,
+            symbol: str,
+            number_of_ticks: int,
+            tzone: str = "US/Central",
+    ) -> DataFrame:
+        """Extract n ticks before now
+
+        Args:
+            symbol (str): Symbol to extract data
+            number_of_ticks (int): Number of ticks retrieved before now
+            tzone (str, optional): Convert the datetime to specific timezone. Defaults to "US/Central".
+
+        Returns:
+            DataFrame: All ticks data transformed into DataFrame
+        """
+        # Compute now date
+        from_date = datetime.now()
+        cst = timezone(tzone)
+
+        # Extract n Ticks before now
+        ticks = mt5.copy_ticks_from(symbol, from_date, number_of_ticks,  mt5.COPY_TICKS_ALL)
+
+        # Transform Tuple into a DataFrame
+        df_ticks = DataFrame(ticks)
+
+        # Convert number format of the date into date format
+        df_ticks["time"] = to_datetime(df_ticks["time"], unit="s", utc=True)
+        df_ticks['time'] = df_ticks['time'].dt.tz_convert(cst)
+
+        return df_ticks.set_index("time")
+
+    def get_candles(
             self,
             symbol: str,
             timeframe: str,
             number_of_candles: int,
             tzone: str = "US/Central"
     ) -> DataFrame:
-        """Convert the timeframe into an MT5 friendly format
+        """Query previous candlestick data from MT5. Convert the data into DataFrame
 
         Args:
             symbol (_type_): _description_
@@ -190,72 +266,53 @@ class TraderBot():
         Returns:
             _type_: _description_
         """
-        mt5_timeframe = mt5_timeframe_book[timeframe]
+        mt5_timeframe = TIMEFRAMES_BOOK[timeframe]
         cst = timezone(tzone)
 
-        # Retrieve data from MT5
+        # Extract n Candles before now
         rates = mt5.copy_rates_from_pos(symbol, mt5_timeframe, 0, number_of_candles)
+
+        # Transform Tuple into a DataFrame
         df_rates = DataFrame(rates)
+
+        # Convert number format of the date into date format
         df_rates['time'] = to_datetime(df_rates['time'], unit='s', utc=True)
         df_rates['time'] = df_rates['time'].dt.tz_convert(cst)
 
         return df_rates.set_index("time")
 
-    # Function to retrieve all open orders from MT5
-
     def get_open_orders(self) -> list[dict[str, int]]:
-        if not self.__open_orders and not self.__orders_updated:
-            self.__open_orders = [order[0] for order in mt5.orders_get()]
-            self.__orders_updated = True
-        return self.__open_orders
+        # Function to retrieve all open orders from MT5
+        # if not self._open_orders and not self.__orders_updated:
+        #     self._open_orders = {order[0]: order for order in mt5.orders_get()}
+        #     self._orders_updated = True
+        # return self._open_orders
 
-    # Function to retrieve all open positions
+        print(mt5.positions_total())
+        print(mt5.orders_total())
 
     def get_open_positions(self):
+        # Function to retrieve all open positions
         # Get position objects
         positions = mt5.positions_get()
         # Return position objects
         return positions
 
-    def __is_active(self) -> bool:
-        return datetime.now() < self.__active_upto
 
-    def run(self) -> None:
-        """_summary_
-        """
-        # Select symbol to run strategy on
-        symbol_for_strategy = self.live_trading_symbols[0]  # TODO: parallel computing with all symbols
-        # Set up a previous time variable
-        previous_time = 0
-        # Set up a current time variable
-        current_time = 0
-        # Start a while loop to poll MT5
-        while self.__is_active():
-            # Retrieve the current candle data
-            candle_data = self.query_historic_data(
-                symbol=symbol_for_strategy,
-                timeframe=self.timeframe,
-                number_of_candles=1
-            )
-            # Extract the timedata
-            current_time = candle_data[0][0]
-            # Compare against previous time
-            if current_time != previous_time:
-                # Notify user #TODO Erase when tested
-                print("New Candle")
-                # Update previous time
-                previous_time = current_time
-                # Retrieve previous orders
-                orders = self.get_open_orders()
-                # Cancel orders
-                for order in orders:
-                    self.cancel_order(order)
-                # Start strategy one on selected symbol
-                # TODO strategy.strategy_one(symbol=symbol_for_strategy, timeframe=trading_settings['timeframe'], pip_size = trading_settings['pip_size'])
-            else:
-                # Get positions
-                positions = self.get_open_positions()
-                # Pass positions to update_trailing_stop
-                # for position in positions:
-                #    strategy.update_trailing_stop(order=position, trailing_stop_pips=10, pip_size=trading_settings['pip_size'])
-            sleep(0.1)
+if __name__ == "__main__":
+    from setup import get_settings
+    from time import sleep
+
+    login_settings = get_settings("settings/demo/login.json")
+    trading_settings = get_settings("settings/demo/trading.json")
+
+    mt5_login_settings = login_settings["mt5_login"]
+
+    trader = BrokerSession()
+
+    # Start MT5
+    trader.start_session(mt5_login_settings)
+    trader.initialize_symbols(["EURUSD"])
+    o = trader.create_order("EURUSD", "BUY", 1, 1.066, 1.069)
+    sleep(5)
+    trader.close_position(o)
