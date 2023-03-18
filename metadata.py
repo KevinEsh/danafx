@@ -1,6 +1,26 @@
 import MetaTrader5 as mt5
+from enum import Enum
 
-mt5_timeframe_book = {
+
+class AssetState(Enum):
+    LONG_POSITION = 1
+    NULL_POSITION = 0
+    SHORT_POSITION = -1
+
+
+class EntrySignal(Enum):
+    BUY = 1
+    NEUTRAL = 0
+    SELL = -1
+
+
+class ExitSignal(Enum):
+    STRATEGIC_EXIT = 1
+    HOLD = 0
+    EARLY_EXIT = -1
+
+
+TIMEFRAMES_BOOK = {
     "M1": mt5.TIMEFRAME_M1,
     "M2": mt5.TIMEFRAME_M2,
     "M3": mt5.TIMEFRAME_M3,
@@ -24,19 +44,36 @@ mt5_timeframe_book = {
     "MN1": mt5.TIMEFRAME_MN1,
 }
 
-mt5_order_type_book = {
-    "SELL_STOP": mt5.ORDER_TYPE_SELL_STOP,
-    "BUY_STOP": mt5.ORDER_TYPE_BUY_STOP,
-    "BUY_LIMIT": mt5.ORDER_TYPE_BUY_LIMIT,
+ORDER_TYPES_BOOK = {
+    # "SELL_STOP": mt5.ORDER_TYPE_SELL_STOP,
+    # "BUY_STOP": mt5.ORDER_TYPE_BUY_STOP,
+    # "BUY_LIMIT": mt5.ORDER_TYPE_BUY_LIMIT,
     "BUY": mt5.ORDER_TYPE_BUY,  # Market Buy order
     "SELL": mt5.ORDER_TYPE_SELL,  # Market Sell order
-    "BUY_LIMIT": mt5.ORDER_TYPE_BUY_LIMIT,  # Buy Limit pending order
-    "SELL_LIMIT": mt5.ORDER_TYPE_SELL_LIMIT,  # Sell Limit pending order
-    "BUY_STOP": mt5.ORDER_TYPE_BUY_STOP,  # Buy Stop pending order
-    "SELL_STOP": mt5.ORDER_TYPE_SELL_STOP,      # Sell Stop pending order
-    # Upon reaching the order price, a pending Buy Limit order is placed at the StopLimit price
-    "STOP_STOP_LIMIT": mt5.ORDER_TYPE_BUY_STOP_LIMIT,
-    # Upon reaching the order price, a pending Sell Limit order is placed at the StopLimit price
-    "SELL_STOP_LIMIT": mt5.ORDER_TYPE_SELL_STOP_LIMIT,
-    "CLOSE_BY": mt5.ORDER_TYPE_CLOSE_BY,      # Order to close a position by an opposite one
+    # "BUY_LIMIT": mt5.ORDER_TYPE_BUY_LIMIT,  # Buy Limit pending order
+    # "SELL_LIMIT": mt5.ORDER_TYPE_SELL_LIMIT,  # Sell Limit pending order
+    # "BUY_STOP": mt5.ORDER_TYPE_BUY_STOP,  # Buy Stop pending order
+    # "SELL_STOP": mt5.ORDER_TYPE_SELL_STOP,      # Sell Stop pending order
+    # # Upon reaching the order price, a pending Buy Limit order is placed at the StopLimit price
+    # "STOP_STOP_LIMIT": mt5.ORDER_TYPE_BUY_STOP_LIMIT,
+    # # Upon reaching the order price, a pending Sell Limit order is placed at the StopLimit price
+    # "SELL_STOP_LIMIT": mt5.ORDER_TYPE_SELL_STOP_LIMIT,
+    # "CLOSE_BY": mt5.ORDER_TYPE_CLOSE_BY,      # Order to close a position by an opposite one
+}
+
+INV_ORDER_TYPES_BOOK = {
+    # "SELL_STOP": mt5.ORDER_TYPE_SELL_STOP,
+    # "BUY_STOP": mt5.ORDER_TYPE_BUY_STOP,
+    # "BUY_LIMIT": mt5.ORDER_TYPE_BUY_LIMIT,
+    "BUY": mt5.ORDER_TYPE_SELL,  # Market Buy order
+    "SELL": mt5.ORDER_TYPE_BUY,  # Market Sell order
+    # "BUY_LIMIT": mt5.ORDER_TYPE_BUY_LIMIT,  # Buy Limit pending order
+    # "SELL_LIMIT": mt5.ORDER_TYPE_SELL_LIMIT,  # Sell Limit pending order
+    # "BUY_STOP": mt5.ORDER_TYPE_BUY_STOP,  # Buy Stop pending order
+    # "SELL_STOP": mt5.ORDER_TYPE_SELL_STOP,      # Sell Stop pending order
+    # # Upon reaching the order price, a pending Buy Limit order is placed at the StopLimit price
+    # "STOP_STOP_LIMIT": mt5.ORDER_TYPE_BUY_STOP_LIMIT,
+    # # Upon reaching the order price, a pending Sell Limit order is placed at the StopLimit price
+    # "SELL_STOP_LIMIT": mt5.ORDER_TYPE_SELL_STOP_LIMIT,
+    # "CLOSE_BY": mt5.ORDER_TYPE_CLOSE_BY,      # Order to close a position by an opposite one
 }
