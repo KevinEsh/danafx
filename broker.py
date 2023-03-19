@@ -1,9 +1,9 @@
-from dataclasses import dataclass
-from pandas import DataFrame, to_datetime
+import MetaTrader5 as mt5
 from pytz import timezone
 from datetime import datetime
-import MetaTrader5 as mt5
-from metadata import mt5_order_type_book, TIMEFRAMES_BOOK
+from dataclasses import dataclass
+from pandas import DataFrame, to_datetime
+from metadata import ORDER_TYPES_BOOK, TIMEFRAMES_BOOK, INV_ORDER_TYPES_BOOK
 
 
 @dataclass
@@ -33,6 +33,9 @@ class BrokerSession():
         # when your script will suddenly fail to pull data, for no discernable reason.
         if not mt5.login(**login_settings):
             raise PermissionError(f"Login failed. {mt5.last_error()}")
+
+        self.leverage = mt5.account_info().leverage
+
         return
 
     def initialize_symbols(self, symbols: list[str]) -> None:
@@ -85,12 +88,14 @@ class BrokerSession():
 
         # Find the filling mode of symbol #TODO
         symbol_info = mt5.symbol_info(symbol)
+        order_type = ORDER_TYPES_BOOK[ordtype]
 
         filling_type = symbol_info.filling_mode
-        price = (symbol_info.ask + symbol_info.bid) / 2.
+        open_price = symbol_info.bid
         digits = symbol_info.digits
         # spread = symbol_info.spread
         micro_lot = symbol_info.volume_step
+        lot_size = micro_lot * lot_units
         # volume_min = symbol_info.volume_min
         # volume_max = symbol_info.volume_max
 
@@ -98,9 +103,9 @@ class BrokerSession():
         request = {
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": symbol,
-            "volume": micro_lot * lot_units,
-            "type": mt5_order_type_book[ordtype],
-            "price": round(price, digits),
+            "volume": lot_size,
+            "type": order_type,
+            "price": round(open_price, digits),
             "sl": round(stop_loss, digits),
             "tp": round(take_profit, digits),
             "deviation": deviation,
@@ -218,10 +223,10 @@ class BrokerSession():
         return order_result
 
     def get_ticks(
-            self,
-            symbol: str,
-            number_of_ticks: int,
-            tzone: str = "US/Central",
+        self,
+        symbol: str,
+        number_of_ticks: int,
+        tzone: str = "US/Central",
     ) -> DataFrame:
         """Extract n ticks before now
 
@@ -287,16 +292,52 @@ class BrokerSession():
         #     self._open_orders = {order[0]: order for order in mt5.orders_get()}
         #     self._orders_updated = True
         # return self._open_orders
-
-        print(mt5.positions_total())
         print(mt5.orders_total())
 
     def get_open_positions(self):
         # Function to retrieve all open positions
         # Get position objects
         positions = mt5.positions_get()
+        print(positions)
         # Return position objects
         return positions
+
+    def calculate_best_price(
+        self,
+        symbol: str,
+        order_type: str,
+    ) -> float:
+        symbol_info = mt5.symbol_
+        if order_type == mt5.ORDER_TYPE_BUY:
+            return mt5
+
+    def calculate_risk_reward_thresholds(
+            self,
+            price: float,
+            ordtype: str,
+            risk_pct: float = 0.01,
+            reward_pct: float = 0.02,
+    ) -> tuple[float]:
+        # Find the TP and SL threshold in absolute price
+        if ordtype == mt5.ORDER_TYPE_BUY:
+            # price = mt5.symbol_info(symbol).ask
+
+            # Compute the variations in absolute price
+            take_profit = price * (1 + reward_pct / self.leverage)
+            stop_loss = price * (1 - risk_pct / self.leverage)
+
+        elif ordtype == mt5.ORDER_TYPE_SELL:
+            # price = mt5.symbol_info(symbol).bid
+
+            # Compute the variations in absolute price
+            take_profit = price * (1 - reward_pct / self.leverage)
+            stop_loss = price * (1 + risk_pct / self.leverage)
+
+        else:
+            take_profit = 0.0
+            stop_loss = 0.0
+
+        return take_profit, stop_loss
 
 
 if __name__ == "__main__":
@@ -308,11 +349,13 @@ if __name__ == "__main__":
 
     mt5_login_settings = login_settings["mt5_login"]
 
-    trader = BrokerSession()
+    session = BrokerSession()
 
     # Start MT5
-    trader.start_session(mt5_login_settings)
-    trader.initialize_symbols(["EURUSD"])
-    o = trader.create_order("EURUSD", "BUY", 1, 1.066, 1.069)
-    sleep(5)
-    trader.close_position(o)
+    session.start_session(mt5_login_settings)
+    session.initialize_symbols(["BCHUSD"])
+    # o = session.create_order("BCHUSD", "SELL", 1, 137.00, 126.70)
+    # print(o)
+
+    # sleep(5)
+    # session.close_position(o)
