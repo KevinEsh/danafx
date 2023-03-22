@@ -47,3 +47,12 @@ class TradingStateMachine:
                 return
             else:
                 raise ValueError(f"Exit {signal=} not recognized")
+
+    def no_position(self) -> bool:
+        return self.state == AssetState.NULL_POSITION
+
+    def on_long_position(self) -> bool:
+        return self.state == AssetState.LONG_POSITION
+
+    def on_short_position(self) -> bool:
+        return self.state == AssetState.SHORT_POSITION
