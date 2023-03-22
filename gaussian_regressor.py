@@ -1,5 +1,5 @@
 from sklearn.gaussian_process.kernels import RBF, WhiteKernel, ExpSineSquared, RationalQuadratic
-from sklearn.gaussian_process import GaussianProcessRegressor, GaussianProcessClassifier
+from sklearn.gaussian_process import GaussianProcessRegressor
 import numpy as np
 import matplotlib.pyplot as plt
 import time
@@ -8,12 +8,28 @@ import time
 class GaussianStockRegressor:
     def __init__(self) -> None:
         # TODO: poner de parametros los modificadores del kernel
-        expsinsqrt = ExpSineSquared(1.0, 15.0, periodicity_bounds=(1e-3, 1e4))
-        rbf = RBF(length_scale=14, length_scale_bounds="fixed")
-        noice = WhiteKernel(1e-2, noise_level_bounds=(1e-7, 1e-4))
+        # expsinsqrt = ExpSineSquared(1.0, 15.0, periodicity_bounds=(1e-3, 1e4))
+        # noice = WhiteKernel(1e-2, noise_level_bounds=(1e-7, 1e-4))
+        self.rq_kernel = 5.97**2 * RationalQuadratic(
+            alpha=5.98e+05,
+            length_scale=16.9,
+            length_scale_bounds=(8, 24),
+            alpha_bounds=(1e3, 1e6),
+        )
 
-        kernel = 1.0 * expsinsqrt * rbf + noice
-        self.gaussian_process = GaussianProcessRegressor(kernel=kernel)
+        self.rbf_kernel = 107.0**2 * RBF(
+            length_scale=303,
+            length_scale_bounds=(1e-5, 1.0e8)
+        )
+
+        # kernel = 1.0 * expsinsqrt * rbf + noice
+
+        self.gaussian_process = GaussianProcessRegressor(
+            kernel=self.rq_kernel,
+            alpha=0.001**2,
+            # random_state=0,
+            n_restarts_optimizer=8,
+        )
 
     def fit(self, train_data, train_target) -> None:
         self.train_data = train_data
@@ -21,76 +37,85 @@ class GaussianStockRegressor:
         self.gaussian_process.fit(self.train_data, self.train_target)
 
     def predict(self, data, return_std: str = True) -> np.ndarray:
-        start_time = time.time()
         mean_pred, std_pred = self.gaussian_process.predict(data, return_std)
-        print(f"Time for KernelRidge predict: {time.time() - start_time:.3f} seconds")
         return mean_pred, std_pred
+
+    def get_optimized_kernel(self):
+        return self.gaussian_process.kernel_
+
+    def save_model(self, path: str = "gp_model.pkl"):
+        with open(path, 'wb') as model_file:
+            pickle.dump(self.gaussian_process, model_file)
 
 
 if __name__ == "__main__":
+    import pickle
     import matplotlib.pyplot as plt
     from preprocessing import preprocess_stock_data
     from setup import get_settings
-    from ktrader import TraderBot
-    from numpy import newaxis, arange
+    from broker import BrokerSession
     # from matplotlib.pyplot import plot, savefig
 
-    strategy_settings = get_settings("settings\demo\lorentzian_classifier.json")
-
     # Import project settings
+    strategy_settings = get_settings("settings\demo\lorentzian_classifier.json")
     login_settings = get_settings("settings/demo/login.json")
     # trading_settings = get_settings("settings/demo/trading.json")
     mt5_login_settings = login_settings["mt5_login"]
 
-    trader = TraderBot()
-    trader.start_session(mt5_login_settings)
-    trader.initialize_symbols(["EURUSD"])
+    session = BrokerSession()
+    session.start_session(mt5_login_settings)
+    session.initialize_symbols(["EURUSD"])
 
-    df = trader.query_historic_data("EURUSD", "H1", 2000)
+    df = session.query_historic_data("EURUSD", "M30", 6500)  #
     source_columns = strategy_settings["source_data"].keys()
 
     # X, y = preprocess_stock_data(df, source_columns, True, False)
     # data = arange(0, 500, 1)[:, newaxis]
-    add_indicators = ["index", "hlc3", "rsi14", "rsi9", "cci", "wt", "adx"]
+    add_indicators = ["close"]  # ["hlc3", "rsi14", "rsi9", "cci", "wt", "adx"]
     target = df.close.values
     data = preprocess_stock_data(df, add_indicators)
+    # print(data)
 
-    train_data = data[50:1500, :]
-    train_target = target[50:1500]
+    train_data = data[0:6500]
+    train_target = target[0:6500]
 
-    test_data = data[1300:, :]
-    test_target = target[1300:]
+    rq_kernel = RationalQuadratic(8, 1)
+    w = np.tril(rq_kernel(np.arange(6500).reshape(-1, 1)))
+    sum_w = w.sum(axis=1, keepdims=True)
+    pred_rq = (w @ train_data) / sum_w
 
-    # Initialize the Gaussian Process Regressor with the Rational Quadratic Kernel
-    noice = WhiteKernel(1e-4, noise_level_bounds=(1e-6, 1e-3))
-    esq_kernel = ExpSineSquared(1.0, 15.0, periodicity_bounds=(1e-3, 1e4))
-    rq_kernel = 1.0 * RationalQuadratic(alpha=5.5, length_scale=8.0) + noice
-    rbf_kernel = 1.0e-1 * RBF(length_scale=1,  length_scale_bounds=(1e-5, 1.0))
-    gp = GaussianProcessRegressor(kernel=rq_kernel)  # , random_state=0)
-    # gp_rbf = GaussianProcessRegressor(kernel=rbf_kernel * esq_kernel, random_state=0)
+    rbf_kernel = RBF(16)
+    w = np.tril(rbf_kernel(np.arange(6500).reshape(-1, 1)))
+    sum_w = w.sum(axis=1, keepdims=True)
+    pred_rbf = (w @ train_data) / sum_w
+
+    # test_data = data[100:]
+    # test_target = target[100:]
+
+    # Test unoptimized kernel
 
     # Fit the GP to the data
-    gp.fit(train_data, train_target)
-    # gp_rbf.fit(train_data, train_target)
-
-    # y_pred2, std2 = gp_rbf.predict(test_data, return_std=True)
-    y_pred, std = gp.predict(test_data, return_std=True)
+    # gp = GaussianStockRegressor()
+    # gp.fit(train_data, train_target)
+    # print(gp.get_optimized_kernel())
+    # y_pred, std = gp.predict(test_data, return_std=True)
 
     # Visualize the results
-    # plt.scatter(data[:, 0], target, color='black', label='Data', alpha=0.4)
-    plt.plot(data[:, 0], target, color='black', label='Data', alpha=0.4)
-    plt.plot(test_data[:, 0], y_pred, color='blue', label='Prediction RQ')
-    # plt.plot(test_data, y_pred2, color='red', label='Prediction RBF')
-    # plt.fill_between(test_data[:, 0].ravel(), y_pred - std, y_pred + std, alpha=0.1, color='blue')
-    # plt.fill_between(test_data.ravel(), y_pred2 - std2, y_pred2 + std2, alpha=0.1, color='red')
+    plt.plot(range(0, data.shape[0])[6000:], data[6000:], color='black', label='Data', alpha=0.4)
+    plt.plot(range(0, data.shape[0])[6000:], pred_rbf[6000:], color='blue', label='Pred', alpha=0.4)
+    plt.plot(range(0, data.shape[0])[6000:], pred_rq[6000:], color='red', label='Pred', alpha=0.4)
+    # # plt.plot(data[100:, 0], y_pred, color='blue', label='Prediction RQ')
+    # # plt.plot(test_data, y_pred2, color='red', label='Prediction RBF')
+    # # plt.fill_between(test_data[:, 0].ravel(), y_pred - std, y_pred + std, alpha=0.1, color='blue')
+    # # plt.fill_between(test_data.ravel(), y_pred2 - std2, y_pred2 + std2, alpha=0.1, color='red')
     plt.legend()
-    plt.savefig("test1.jpeg")
+    plt.savefig("test_x.jpeg")
 
     # rng = np.random.RandomState(0)
-    # data = np.linspace(0, 50, num=1_000).reshape(-1, 1)
+    # data = np.linspace(0, 0, num=1_000).reshape(-1, 1)
     # target = np.sin(data).ravel()
 
-    # training_sample_indices = rng.choice(np.arange(0, 400), size=200, replace=False)
+    # training_sample_indices = rng.choice(np.arange(0, 400), size=6500, replace=False)
     # training_data = data[training_sample_indices]
     # training_noisy_target = target[training_sample_indices] + 0.5 * rng.randn(
     #     len(training_sample_indices)
