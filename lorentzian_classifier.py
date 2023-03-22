@@ -4,12 +4,6 @@ from enum import Enum
 from typing import Any
 
 
-class TradeSignal(Enum):
-    BUY = 1
-    NEUTRAL = 0
-    SELL = -1
-
-
 class LorentzianClassifier:
     """This model specializes specifically in predicting the direction of price
     action over the course of the next 4 bars. To avoid complications with the
@@ -43,14 +37,30 @@ class LorentzianClassifier:
         # fit the model
         self._train_data = train_data
         self._train_target = train_target
-        self.knn_classifier.fit(self._train_data, self._train_target)
+        # self.knn_classifier.fit(self._train_data, self._train_target)
 
     def predict(self, data: Any) -> Any:
         return self.knn_classifier.predict(data)
 
+    def predict2(self, data: Any) -> Any:
+        predictions = np.full(data.shape[0], 0)
+        for x1 in data:
+            i1 = x1[0]  # chronologycal index
+            is_past = self._train_data[:, 0] < i1
+            only_leap = ~((self._train_data[:, 0] - i1) % self._neighbors_leap)
+            x2s = self._train_data[is_past & only_leap]
+            distances = self._lorentzian_distance(x1, x2s)
+            neighbor_count = 0
+            largest_distance = -1
+            for i, d in enumerate(distances):
+                if largest_distance
+
     def update(self, new_data: Any) -> None:
         # TODO: modificar esta funcion para poder actualizar los datos de entrenamiento cada cierto tiempo/iteraciones
         raise NotImplemented
+
+    def _lorentzian_distance(self, x1: np.ndarray, x2s: np.ndarray) -> np.ndarray:
+        return np.sum(np.log(1 + np.abs(x2s[:, 1:] - x1[1:])), axis=1)
 
     def _modif_lorentzian_distance(self, x1: np.ndarray, x2: np.ndarray) -> float:
         i1, i2 = x1[0], x2[0]  # get the chronological index of both points
@@ -83,23 +93,10 @@ class LorentzianClassifier:
 if __name__ == "__main__":
     # import pandas as pd
     from setup import get_settings
-    from ktrader import TraderBot
+    from broker import TraderBot
     # from matplotlib.pyplot import plot, savefig
-    from utils import HLC3, RSISmoothIndicator, CCISmoothIndicator, \
-        WaveTrendIndicator, ADXSmoothIndicator, get_signal_labels
 
     strategy_settings = get_settings("settings\demo\lorentzian_classifier.json")
-
-    # X = pd.DataFrame({'feature1': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-    #                   'feature2': [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22],
-    #                  'feature3': [5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25]})
-
-    # y = pd.Series([0, 0, 0, 0, -1, -1, -1, -1, 1, 1, 1])
-
-    # # make some predictions on new data
-    # X_new = pd.DataFrame({'feature1': [6, 7, 8, 1],
-    #                       'feature2': [12, 14, 16, 3],
-    #                      'feature3': [15, 17, 19, 100]})
 
     # Import project settings
     login_settings = get_settings("settings/demo/login.json")
@@ -111,20 +108,9 @@ if __name__ == "__main__":
     trader.initialize_symbols(["EURUSD"])
 
     df = trader.query_historic_data("EURUSD", "H4", 5000)
-    df["index"] = range(0, len(df))
-    df["hlc3"] = HLC3(df.high, df.low, df.close)
-    df["rsi14"] = RSISmoothIndicator(df.close, fillna=False)
-    df["rsi9"] = RSISmoothIndicator(df.close, 9, fillna=False)
-    df["cci"] = CCISmoothIndicator(df.high, df.low, df.close, fillna=False)
-    df["wt"] = WaveTrendIndicator(df.hlc3, fillna=False)
-    df["adx"] = ADXSmoothIndicator(df.high, df.low, df.close, fillna=False)
-    df["ground_signal"] = get_signal_labels(df["close"], -4)
-
-    df.dropna(axis=0, inplace=True)
     source_columns = strategy_settings["source_data"].keys()
-    data = df[source_columns].values.reshape(-1, len(source_columns))
-    target = df["ground_signal"].values
 
+    data, target =
     train_data = data  # [:-90, :]
     train_target = target  # [:-90]
 
