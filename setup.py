@@ -1,6 +1,5 @@
 from json import load
 from os.path import exists
-from ktrader import TraderBot
 import mplfinance as fplt
 from utils import get_signal_labels, HLC3
 from numpy import nan
@@ -139,7 +138,7 @@ if __name__ == '__main__':
     data = df_rates[["high", "low", "close"]].shift(-1, fill_value=1.0).values.reshape(-1, 3)
     target = df_rates["close"]
 
-    train_data = data[:-90, :]
+    train_data = data[:-90, 1:]
     train_target = target[:-90]
 
     gauss_predictor = GaussianStockPredictor()
