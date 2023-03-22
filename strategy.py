@@ -1,4 +1,4 @@
-import ktrader
+import broker
 from dataclasses import dataclass
 import pandas
 import numpy
@@ -42,7 +42,7 @@ def strategy_one(symbol, timeframe, pip_size):
 # Function to query last two candles in MetaTrader 5 based upon timeframe
 def get_and_transform_mt5_data(symbol, timeframe, number_of_candles, pip_size):
     # Retrieve the raw data from MT5 platform
-    raw_data = ktrader.query_historic_data(symbol, timeframe, number_of_candles)
+    raw_data = broker.query_historic_data(symbol, timeframe, number_of_candles)
     # Transform raw data into Pandas DataFrame
     df_data = pandas.DataFrame(raw_data)
     # Convert the time in seconds into a human readable datetime format
@@ -93,7 +93,7 @@ def create_new_order(decision_outcome, candle_dataframe, pip_size, symbol):
         # Add in an order comment
         comment = "Green Order"
         # Send order to place_order function in mt5_interface.py
-        ktrader.place_order("BUY_STOP", symbol, 0.1, buy_stop, stop_loss, take_profit, comment)
+        broker.place_order("BUY_STOP", symbol, 0.1, buy_stop, stop_loss, take_profit, comment)
         return
     elif decision_outcome == "Red":
         # Calculate the order stop_loss (trade_high of previous candle)
@@ -106,7 +106,7 @@ def create_new_order(decision_outcome, candle_dataframe, pip_size, symbol):
         # Add in an order comment
         comment = "Red Order"
         # Send order to place_order function in mt5_interface.py
-        ktrader.place_order("SELL_STOP", symbol, 0.1, buy_stop, stop_loss, take_profit, comment)
+        broker.place_order("SELL_STOP", symbol, 0.1, buy_stop, stop_loss, take_profit, comment)
         return
 
 
@@ -129,8 +129,8 @@ def update_trailing_stop(order, trailing_stop_pips, pip_size):
             new_take_profit = order[12] + new_stop_loss - order[11]
             print(new_take_profit)
             # Send order to modify_position
-            ktrader.modify_position(order_number=order_number, symbol=symbol, new_stop_loss=new_stop_loss,
-                                    new_take_profit=new_take_profit)
+            broker.modify_position(order_number=order_number, symbol=symbol, new_stop_loss=new_stop_loss,
+                                   new_take_profit=new_take_profit)
     elif order[12] < order[11]:
         # If Red, new_stop_loss = current_price + trailing_stop_pips
         new_stop_loss = order[13] + trailing_stop_pips
@@ -144,5 +144,5 @@ def update_trailing_stop(order, trailing_stop_pips, pip_size):
             new_take_profit = order[12] - new_stop_loss + order[11]
             print(new_take_profit)
             # Send order to modify_position
-            ktrader.modify_position(order_number=order_number, symbol=symbol, new_stop_loss=new_stop_loss,
-                                    new_take_profit=new_take_profit)
+            broker.modify_position(order_number=order_number, symbol=symbol, new_stop_loss=new_stop_loss,
+                                   new_take_profit=new_take_profit)
