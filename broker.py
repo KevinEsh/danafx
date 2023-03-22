@@ -34,7 +34,10 @@ class BrokerSession():
         if not mt5.login(**login_settings):
             raise PermissionError(f"Login failed. {mt5.last_error()}")
 
-        self.leverage = mt5.account_info().leverage
+        account_info = mt5.account_info()
+        self.leverage = account_info.leverage
+        self.balance = account_info.balance
+        self.currency = account_info.currency
 
         return
 
@@ -162,7 +165,7 @@ class BrokerSession():
         return order_result
 
     def cancel_order(self, order: int) -> bool:
-        """Function to cancel an order
+        """Cancel an order which hasn't been taking place
 
         Args:
             order_number (int): _description_
@@ -174,15 +177,15 @@ class BrokerSession():
         request = {
             "action": mt5.TRADE_ACTION_REMOVE,
             "order": order.order,
-            "comment": f"remove {order.symbol}"
+            "comment": f"cancel {order.symbol}"
         }
+
         # Send order to MT5
         order_result = mt5.order_send(request)
 
         # Notify based on return outcomes
         if order_result.retcode != mt5.TRADE_RETCODE_DONE:
-            print(f"Error closing order. Error Code {order_result.retcode}, Error Details: {order_result}")
-            return
+            raise RuntimeError(f"Error closing order. Code {order_result.retcode}, Details: {order_result.comment}")
 
         print(f"Successfully order closed {order.symbol}")
         return order_result
@@ -193,7 +196,7 @@ class BrokerSession():
         new_stop_loss: float = None,
         new_take_profit: float = None,
     ) -> bool:
-        """Function to modify an open position
+        """Modify an open position with new stop_loss and take_profit
 
         Args:
             order (int): _description_
@@ -212,12 +215,14 @@ class BrokerSession():
             "sl": new_stop_loss,
             "tp": new_take_profit,
         }
+
         # Send order to MT5
         order_result = mt5.order_send(request)
 
         # Notify based on return outcomes
         if order_result.retcode != mt5.TRADE_RETCODE_DONE:
-            print(f"Error closing order. Error Code {order_result.retcode}, Error Details: {order_result}")
+            raise RuntimeError(
+                f"Error modifying position. Code {order_result.retcode}, Details: {order_result.comment}")
 
         print(f"Successfully order closed {order_result.symbol}")
         return order_result
@@ -226,6 +231,7 @@ class BrokerSession():
         self,
         symbol: str,
         number_of_ticks: int,
+        format_time: bool = True,
         tzone: str = "US/Central",
     ) -> DataFrame:
         """Extract n ticks before now
@@ -240,7 +246,6 @@ class BrokerSession():
         """
         # Compute now date
         from_date = datetime.now()
-        cst = timezone(tzone)
 
         # Extract n Ticks before now
         ticks = mt5.copy_ticks_from(symbol, from_date, number_of_ticks,  mt5.COPY_TICKS_ALL)
@@ -249,19 +254,22 @@ class BrokerSession():
         df_ticks = DataFrame(ticks)
 
         # Convert number format of the date into date format
-        df_ticks["time"] = to_datetime(df_ticks["time"], unit="s", utc=True)
-        df_ticks['time'] = df_ticks['time'].dt.tz_convert(cst)
+        if format_time:
+            cst = timezone(tzone)
+            df_ticks["time"] = to_datetime(df_ticks["time"], unit="s", utc=True)
+            df_ticks["time"] = df_ticks["time"].dt.tz_convert(cst)
 
         return df_ticks.set_index("time")
 
     def get_candles(
-            self,
-            symbol: str,
-            timeframe: str,
-            number_of_candles: int,
-            tzone: str = "US/Central"
+        self,
+        symbol: str,
+        timeframe: str,
+        number_of_candles: int,
+        format_time: bool = False,
+        tzone: str = "US/Central"
     ) -> DataFrame:
-        """Query previous candlestick data from MT5. Convert the data into DataFrame
+        """Query previous candlestick data from symbol. Convert the data into DataFrame
 
         Args:
             symbol (_type_): _description_
@@ -272,7 +280,6 @@ class BrokerSession():
             _type_: _description_
         """
         mt5_timeframe = TIMEFRAMES_BOOK[timeframe]
-        cst = timezone(tzone)
 
         # Extract n Candles before now
         rates = mt5.copy_rates_from_pos(symbol, mt5_timeframe, 0, number_of_candles)
@@ -281,8 +288,10 @@ class BrokerSession():
         df_rates = DataFrame(rates)
 
         # Convert number format of the date into date format
-        df_rates['time'] = to_datetime(df_rates['time'], unit='s', utc=True)
-        df_rates['time'] = df_rates['time'].dt.tz_convert(cst)
+        if format_time:
+            cst = timezone(tzone)
+            df_rates['time'] = to_datetime(df_rates['time'], unit='s', utc=True)
+            df_rates['time'] = df_rates['time'].dt.tz_convert(cst)
 
         return df_rates.set_index("time")
 
@@ -297,19 +306,32 @@ class BrokerSession():
     def get_open_positions(self):
         # Function to retrieve all open positions
         # Get position objects
-        positions = mt5.positions_get()
-        print(positions)
+        self.positions = mt5.positions_get()
         # Return position objects
-        return positions
+        return self.positions
 
     def calculate_best_price(
         self,
         symbol: str,
         order_type: str,
+        risked_pct: float,
+        rr_ratio: float,
     ) -> float:
-        symbol_info = mt5.symbol_
+        base_currency = symbol[3:]
+        if base_currency == self.currency:
+            conversion = 1.0
+        else:
+            conversion_symbol = base_currency + self.currency
+            price_conversion = self.get_candles(conversion_symbol, "M1", )
+            conversion = 1. / price_conversion
+
+        if base_currency == "JPY":
+            pip_value = 0.01
+        else:
+            pip_value = 0.0001
+
         if order_type == mt5.ORDER_TYPE_BUY:
-            return mt5
+            return
 
     def calculate_risk_reward_thresholds(
             self,
@@ -354,6 +376,7 @@ if __name__ == "__main__":
     # Start MT5
     session.start_session(mt5_login_settings)
     session.initialize_symbols(["BCHUSD"])
+    session.get_candles("EURUSD", "M1", 1)
     # o = session.create_order("BCHUSD", "SELL", 1, 137.00, 126.70)
     # print(o)
 
