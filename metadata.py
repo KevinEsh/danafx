@@ -48,8 +48,8 @@ ORDER_TYPES_BOOK = {
     # "SELL_STOP": mt5.ORDER_TYPE_SELL_STOP,
     # "BUY_STOP": mt5.ORDER_TYPE_BUY_STOP,
     # "BUY_LIMIT": mt5.ORDER_TYPE_BUY_LIMIT,
-    "BUY": mt5.ORDER_TYPE_BUY,  # Market Buy order
-    "SELL": mt5.ORDER_TYPE_SELL,  # Market Sell order
+    "buy": mt5.ORDER_TYPE_BUY,  # Market Buy order
+    "sell": mt5.ORDER_TYPE_SELL,  # Market Sell order
     # "BUY_LIMIT": mt5.ORDER_TYPE_BUY_LIMIT,  # Buy Limit pending order
     # "SELL_LIMIT": mt5.ORDER_TYPE_SELL_LIMIT,  # Sell Limit pending order
     # "BUY_STOP": mt5.ORDER_TYPE_BUY_STOP,  # Buy Stop pending order
@@ -65,8 +65,8 @@ INV_ORDER_TYPES_BOOK = {
     # "SELL_STOP": mt5.ORDER_TYPE_SELL_STOP,
     # "BUY_STOP": mt5.ORDER_TYPE_BUY_STOP,
     # "BUY_LIMIT": mt5.ORDER_TYPE_BUY_LIMIT,
-    "BUY": mt5.ORDER_TYPE_SELL,  # Market Buy order
-    "SELL": mt5.ORDER_TYPE_BUY,  # Market Sell order
+    "buy": mt5.ORDER_TYPE_SELL,  # Market Buy order
+    "sell": mt5.ORDER_TYPE_BUY,  # Market Sell order
     # "BUY_LIMIT": mt5.ORDER_TYPE_BUY_LIMIT,  # Buy Limit pending order
     # "SELL_LIMIT": mt5.ORDER_TYPE_SELL_LIMIT,  # Sell Limit pending order
     # "BUY_STOP": mt5.ORDER_TYPE_BUY_STOP,  # Buy Stop pending order
