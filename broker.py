@@ -19,8 +19,6 @@ class BrokerSession():
             ConnectionAbortedError: _description_
             PermissionError: _description_
         """
-        # path = "C:\Program Files\MetaTrader 5\\terminal64.exe"  # TODO
-
         # Attempt to start MT5
         if not mt5.initialize(**login_settings):
             raise ConnectionAbortedError(f"Initialization Failed. {mt5.last_error()}")
@@ -34,10 +32,10 @@ class BrokerSession():
         if not mt5.login(**login_settings):
             raise PermissionError(f"Login failed. {mt5.last_error()}")
 
-        account_info = mt5.account_info()
-        self.leverage = account_info.leverage
-        self.balance = account_info.balance
-        self.currency = account_info.currency
+        self.account_info = mt5.account_info() #._asdict() TODO
+        self.leverage = self.account_info.leverage
+        self.balance = self.account_info.balance
+        self.account_currency = self.account_info.currency
 
         return
 
@@ -59,42 +57,52 @@ class BrokerSession():
         if nonexistent_symbols:
             raise ValueError(f"Symbols {nonexistent_symbols} do not exist")
 
-        # If it exists, enable it
-        for provided_symbol in symbols:
-            if not mt5.symbol_select(provided_symbol, True):
-                raise ValueError(f"Unable to enable symbol {provided_symbol}")
+        # If exists, switch it on
+        for real_symbol in symbols:
+            if not mt5.symbol_select(real_symbol, True):
+                raise RuntimeError(f"Unable to switch {real_symbol} on")
+            #TODO: self.symbols_info[real_symbol] = mt5.symbol_info(real_symbol)
         return
 
-    def create_order(
+    def create_market_order(
         self,
         symbol: str,
-        ordtype: str,
+        order_type: str,
         lot_units: int,
         stop_loss: float,
         take_profit: float,
         deviation: int = 10,
     ) -> None:
-        """Create a new order on MetaTrader5
+        """Create a new market order. This new order will be transactioned almost immidiately
 
         Args:
-            symbol (str): Ticker name to purchase/sell
-            order_type (str): "SELL_STOP" or "BUY_STOP"
-            lot_units (float): Volume of the ticker to purchase/sell
-            price (float): The unitarium price to purchase/sell each stock
-            stop_loss (float): #TODO
-            take_profit (float): #TODO
-            comment (str, optional): Add a comment if you need it. Defaults to "No comment".
+            symbol (str): Asset name to buy/sell
+            order_type (str): "SELL" or "BUY"
+            lot_units (float): Number of micro lots to buy/sell. Acknowledge 0.01 standard lot is a micro lot 
+            stop_loss (float): Price at which the position will automatically exit with defined losses
+            take_profit (float): Price at which the position will automatically exit with defined gains
+            deviation (int): Number of pips to miss if the price order is not fulfilled
 
         Returns:
-            _type_: _description_
+            mt5.OrderSendResult: _description_
         """
+        if not self.symbols_info.get(symbol):
+            raise ValueError(f"Symbol {symbol} not initilized")
+        
+        if order_type not in ORDER_TYPES_BOOK:
+            raise ValueError("action must be 'buy' or 'sell'")
 
-        # Find the filling mode of symbol #TODO
+        # Find the filling mode of symbol
         symbol_info = mt5.symbol_info(symbol)
-        order_type = ORDER_TYPES_BOOK[ordtype]
+        # filling_type = symbol_info.filling_mode #TODO: averiguar como funciona esta wea
 
-        filling_type = symbol_info.filling_mode
-        open_price = symbol_info.bid
+        if order_type == "sell":
+            # maximum price that a buyer is willing to pay for a share
+            open_price = symbol_info.bid
+        else:
+            # minimum price that a seller is willing to take for that same share
+            open_price = symbol_info.ask 
+        
         digits = symbol_info.digits
         # spread = symbol_info.spread
         micro_lot = symbol_info.volume_step
@@ -107,14 +115,14 @@ class BrokerSession():
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": symbol,
             "volume": lot_size,
-            "type": order_type,
+            "type": ORDER_TYPES_BOOK[order_type],
             "price": round(open_price, digits),
             "sl": round(stop_loss, digits),
             "tp": round(take_profit, digits),
             "deviation": deviation,
             "type_filling": 1,  # filling_type,
             "type_time": mt5.ORDER_TIME_GTC,
-            "comment": f"open {symbol}",
+            "comment": f"open {order_type} for {symbol}",
         }
 
         # Send the order to MT5
@@ -122,8 +130,7 @@ class BrokerSession():
 
         # Notify based on return outcomes
         if order_result.retcode != mt5.TRADE_RETCODE_DONE:
-            print(f"Error creating order. Error Code: {order_result.retcode}, Error Details: {order_result.comment}")
-            return
+            raise RuntimeError(f"Error creating order. Code: {order_result.retcode}, details: {order_result.comment}")
 
         print(f"Successfully order created {symbol}")
         # TODO: crear un algoritmo que sume estas ordenes a una mini-cache
@@ -131,21 +138,20 @@ class BrokerSession():
 
     def close_position(
         self,
-        order: object,
+        position: object,
         # price: float,
         deviation: int = 10,
     ):
         # Create the inverse request
-        open_request = order.request
+        open_request = position.request
         close_price = mt5.symbol_info_tick(open_request.symbol).bid
-        order_type = mt5.ORDER_TYPE_BUY if open_request.type == mt5.ORDER_TYPE_SELL else mt5.ORDER_TYPE_SELL
 
         close_request = {
-            "position": order.order,
-            "action": open_request.action,
+            "action": open_request.action, #TODO: Revisar si esta wea no ocasiona un bug
+            "position": position.order,
             "symbol": open_request.symbol,
-            "volume": order.volume,
-            "type": order_type,
+            "volume": position.volume,
+            "type": INV_ORDER_TYPES_BOOK[open_request.type],
             "price": close_price,
             "deviation": deviation,
             "type_filling": open_request.type_filling,
@@ -158,13 +164,12 @@ class BrokerSession():
 
         # Notify based on return outcomes
         if order_result.retcode != mt5.TRADE_RETCODE_DONE:
-            print(f"Error closing order. Error code {open_request.retcode}, Error details: {order_result.comment}")
-            return
+            raise RuntimeError(f"Error closing position. Code {order_result.retcode}, details: {order_result.comment}")
 
-        print(f"Successfully order closed {open_request.symbol}")
+        print(f"Successfully position closed {open_request.symbol}")
         return order_result
 
-    def cancel_order(self, order: int) -> bool:
+    def cancel_order(self, order: mt5.OrderSendResult) -> bool:
         """Cancel an order which hasn't been taking place
 
         Args:
@@ -221,8 +226,7 @@ class BrokerSession():
 
         # Notify based on return outcomes
         if order_result.retcode != mt5.TRADE_RETCODE_DONE:
-            raise RuntimeError(
-                f"Error modifying position. Code {order_result.retcode}, Details: {order_result.comment}")
+            raise RuntimeError(f"Error modifying position. Code {order_result.retcode}, details: {order_result.comment}")
 
         print(f"Successfully order closed {order_result.symbol}")
         return order_result
@@ -256,7 +260,7 @@ class BrokerSession():
         # Convert number format of the date into date format
         if format_time:
             cst = timezone(tzone)
-            df_ticks["time"] = to_datetime(df_ticks["time"], unit="s", utc=True)
+            df_ticks["time"] = to_datetime(df_ticks["time_msc"], unit="ms", utc=True)
             df_ticks["time"] = df_ticks["time"].dt.tz_convert(cst)
 
         return df_ticks.set_index("time")
@@ -301,7 +305,7 @@ class BrokerSession():
         #     self._open_orders = {order[0]: order for order in mt5.orders_get()}
         #     self._orders_updated = True
         # return self._open_orders
-        print(mt5.orders_total())
+        return mt5.orders_total()
 
     def get_open_positions(self):
         # Function to retrieve all open positions
@@ -310,56 +314,94 @@ class BrokerSession():
         # Return position objects
         return self.positions
 
-    def calculate_best_price(
-        self,
-        symbol: str,
-        order_type: str,
-        risked_pct: float,
-        rr_ratio: float,
-    ) -> float:
+    def get_exchange_rate(self, symbol: str) -> float:
         base_currency = symbol[3:]
-        if base_currency == self.currency:
-            conversion = 1.0
+        if base_currency == self.account_currency:
+            exchange_rate = 1.
         else:
-            conversion_symbol = base_currency + self.currency
-            price_conversion = self.get_candles(conversion_symbol, "M1", )
-            conversion = 1. / price_conversion
+            m1 = TIMEFRAMES_BOOK["M1"]
+            exchange_symbol = base_currency + self.account_currency
+            exchange_rate = mt5.copy_rates_from_pos(exchange_symbol, m1, 0, 1).open
 
+        return exchange_rate
+    
+    def get_pipvalue(self, symbol: str) -> float:
+        base_currency = symbol[3:]
         if base_currency == "JPY":
             pip_value = 0.01
         else:
             pip_value = 0.0001
 
-        if order_type == mt5.ORDER_TYPE_BUY:
-            return
-
-    def calculate_risk_reward_thresholds(
-            self,
-            price: float,
-            ordtype: str,
-            risk_pct: float = 0.01,
-            reward_pct: float = 0.02,
+        return pip_value
+        
+    def calculate_sltp(
+        self,
+        symbol: str,
+        order_type: str,
+        price: float,
+        pips: float,
+        rr_ratio: float,
     ) -> tuple[float]:
-        # Find the TP and SL threshold in absolute price
-        if ordtype == mt5.ORDER_TYPE_BUY:
-            # price = mt5.symbol_info(symbol).ask
-
-            # Compute the variations in absolute price
-            take_profit = price * (1 + reward_pct / self.leverage)
-            stop_loss = price * (1 - risk_pct / self.leverage)
-
-        elif ordtype == mt5.ORDER_TYPE_SELL:
-            # price = mt5.symbol_info(symbol).bid
-
-            # Compute the variations in absolute price
-            take_profit = price * (1 - reward_pct / self.leverage)
-            stop_loss = price * (1 + risk_pct / self.leverage)
-
+        pip_amount = self.get_pipvalue(symbol) * pips
+        
+        if order_type == "buy":
+            take_profit = price + rr_ratio * pip_amount
+            stop_loss = price - pip_amount
+        elif order_type == "sell":
+            take_profit = price - rr_ratio * pip_amount
+            stop_loss = price + pip_amount
         else:
             take_profit = 0.0
             stop_loss = 0.0
 
-        return take_profit, stop_loss
+        return stop_loss, take_profit
+
+    def calculate_sltp_2(
+        self,
+        symbol: str,
+        order_type: str,
+        price: float,
+        lot_size: float,
+        risk_pct: float,
+        rr_ratio: float,
+    ) -> tuple[float]:
+        exchange_rate = self.get_exchange_rate(symbol)
+        pip_amount = risk_pct * self.balance * lot_size * exchange_rate / (100_000 * lot_size)
+
+        if order_type == "buy":
+            take_profit = price + rr_ratio * pip_amount
+            stop_loss = price - pip_amount
+        elif order_type == "sell":
+            take_profit = price - rr_ratio * pip_amount
+            stop_loss = price + pip_amount
+        else:
+            take_profit = 0.0
+            stop_loss = 0.0
+
+        return stop_loss, take_profit
+            
+
+    def calculate_sltp_3(
+            self,
+            order_type: str,
+            price: float,
+            risk_pct: float = 0.01,
+            reward_pct: float = 0.02,
+    ) -> tuple[float]:
+        # Find the TP and SL threshold in absolute price
+        if order_type == 'buy':
+            # Compute the variations in absolute price
+            take_profit = price * (1 + reward_pct / self.leverage)
+            stop_loss = price * (1 - risk_pct / self.leverage)
+        elif order_type == mt5.ORDER_TYPE_SELL:
+            # Compute the variations in absolute price
+            take_profit = price * (1 - reward_pct / self.leverage)
+            stop_loss = price * (1 + risk_pct / self.leverage)
+        else:
+            take_profit = 0.0
+            stop_loss = 0.0
+
+        return stop_loss, take_profit
 
 
 if __name__ == "__main__":
