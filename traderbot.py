@@ -16,7 +16,7 @@ class TradingStrategy:
 
 class TraderBot:
 
-    def __init__(self, symbol: str) -> None:
+    def __init__(self, login_settings) -> None:
         from setup import get_settings
 
         login_settings = get_settings("settings/demo/login.json")
@@ -24,6 +24,7 @@ class TraderBot:
 
         mt5_login_settings = login_settings["mt5_login"]
 
+        symbol = "EURUSD"
         # Start MT5
         self.broker = BrokerSession()
         self.broker.start_session(mt5_login_settings)
@@ -32,6 +33,7 @@ class TraderBot:
         self.symbol = symbol
         self.timeframe = "M1"
         self.open_positions = None
+        self.seconds_leap = 1
 
     def run(self) -> None:
         """_summary_
@@ -71,7 +73,7 @@ class TraderBot:
             # elif self.state.on_short_position():
             #     pass
 
-            sleep(1)
+            sleep(self.seconds_leap)
 
     def set_init_state(self):
         # self.open_positions = self.broker.get_open_positions()
