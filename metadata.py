@@ -6,6 +6,7 @@ class AssetState(Enum):
     LONG_POSITION = 1
     NULL_POSITION = 0
     SHORT_POSITION = -1
+    WAITING_POSITION = -2
 
 
 class EntrySignal(Enum):
@@ -15,9 +16,8 @@ class EntrySignal(Enum):
 
 
 class ExitSignal(Enum):
-    STRATEGIC_EXIT = 1
+    EXIT = 1
     HOLD = 0
-    EARLY_EXIT = -1
 
 
 TIMEFRAMES_BOOK = {
