@@ -2,57 +2,75 @@ from metadata import EntrySignal, ExitSignal, AssetState
 from typing import Union
 
 
-class TradingStateMachine:
+class AssetStateMachine:
     """Define the state machine and its transitions
     """
 
     def __init__(self, symbol: str, init_state: AssetState = AssetState.NULL_POSITION) -> None:
         self.symbol = symbol
-        self.state = init_state
+        self._state = init_state
 
-    def transition(self, signal: Union[EntrySignal, ExitSignal]) -> None:
+    def transition(self, signal: Union[EntrySignal, ExitSignal]):
         # Looking for buy/sell entries when there is no positions
-        if self.state == AssetState.NULL_POSITION:
+        if self._state == AssetState.NULL_POSITION:
 
-            if signal == EntrySignal.BUY:
-                # self.place_order("buy")
-                self.state = AssetState.LONG_POSITION
+            if signal == EntrySignal.NEUTRAL.value:
                 return
-            elif signal == EntrySignal.SELL:
-                # self.place_order("sell")
-                self.state = AssetState.SHORT_POSITION
+            if signal in [EntrySignal.BUY.value, EntrySignal.SELL.value]:
+                self._state = AssetState.WAITING_POSITION
                 return
-            elif signal == EntrySignal.NEUTRAL:
+            else:
+                raise ValueError(f"Entry {signal=} not recognized")
+
+        elif self._state == AssetState.WAITING_POSITION:
+            if signal == EntrySignal.BUY.value:
+                self._state = AssetState.LONG_POSITION
+                return
+            elif signal == EntrySignal.SELL.value:
+                self._state = AssetState.SHORT_POSITION
+                return
+            elif signal == EntrySignal.NEUTRAL.value:
                 return
             else:
                 raise ValueError(f"Entry {signal=} not recognized")
 
         # Looking for buy/sell entries when there is no positions
-        elif self.state == AssetState.LONG_POSITION:
+        elif self._state in [AssetState.LONG_POSITION, AssetState.SHORT_POSITION]:
             # Strategic exit is raised by touching a Take-Profit
-            if signal in [ExitSignal.STRATEGIC_EXIT, ExitSignal.EARLY_EXIT]:
-                self.state = AssetState.NULL_POSITION
+            if signal == ExitSignal.EXIT.value:
+                self._state = AssetState.NULL_POSITION
                 return
-            elif signal == ExitSignal.HOLD:
-                return
-            else:
-                raise ValueError(f"Exit {signal=} not recognized")
-
-        elif self.state == AssetState.SHORT_POSITION:
-            # Early exit is raised when the algorithm detect high volatity
-            if signal in [ExitSignal.STRATEGIC_EXIT, ExitSignal.EARLY_EXIT]:
-                self.state = AssetState.NULL_POSITION
-                return
-            elif signal == ExitSignal.HOLD:
+            elif signal == ExitSignal.HOLD.value:
                 return
             else:
                 raise ValueError(f"Exit {signal=} not recognized")
 
+    def is_entry(self, signal: EntrySignal) -> bool:
+        if signal in [EntrySignal.BUY.value, EntrySignal.SELL.value]:
+            return True
+        return False
+
+    def is_exit(self, signal: ExitSignal) -> bool:
+        if signal == ExitSignal.EXIT.value:
+            return True
+        return False
+
+    @ property
     def no_position(self) -> bool:
-        return self.state == AssetState.NULL_POSITION
+        return self._state == AssetState.NULL_POSITION
 
-    def on_long_position(self) -> bool:
-        return self.state == AssetState.LONG_POSITION
+    @ property
+    def awaiting_position(self) -> bool:
+        return self._state == AssetState.WAITING_POSITION
 
-    def on_short_position(self) -> bool:
-        return self.state == AssetState.SHORT_POSITION
+    @ property
+    def on_long(self) -> bool:
+        return self._state == AssetState.LONG_POSITION
+
+    @ property
+    def on_short(self) -> bool:
+        return self._state == AssetState.SHORT_POSITION
+
+
+if __name__ == "__main__":
+    s = AssetStateMachine()
