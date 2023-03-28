@@ -5,12 +5,6 @@ import numpy
 
 
 @dataclass
-class TradingDecision:
-    action: str  # SELL, BUY, NOTHIHNG, UPDATE, ETC
-    ...
-
-
-@dataclass
 class TradingStrategyClass:
     """Function to strcuture any trading strategy"""
 
