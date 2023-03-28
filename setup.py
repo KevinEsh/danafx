@@ -119,7 +119,7 @@ def plot_candlestick_chart(df_rates, symbol: str, timestamp: str) -> None:
 
 # Main function
 if __name__ == '__main__':
-    from gaussian_regressor import GaussianStockRegressor
+    from strategies.gaussian_regressor import GaussianStockRegressor
     # Import project settings
     login_settings = get_settings("settings/demo/login.json")
     trading_settings = get_settings("settings/demo/trading.json")
