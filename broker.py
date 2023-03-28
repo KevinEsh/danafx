@@ -34,9 +34,9 @@ class BrokerSession():
             raise PermissionError(f"Login failed. {mt5.last_error()}")
 
         self.account_info = mt5.account_info()  # ._asdict() TODO
-        self.leverage = self.account_info.leverage
-        self.balance = self.account_info.balance
-        self.account_currency = self.account_info.currency
+        # self.leverage = self.account_info.leverage
+        # self.balance = self.account_info.balance
+        # self.account_currency = self.account_info.currency
 
         return
 
@@ -51,18 +51,19 @@ class BrokerSession():
             ValueError: _description_
         """
         # Get a list of all symbols supported in MT5
-        all_symbols = [symbol.name for symbol in mt5.symbols_get()]  # TODO: crear cache
+        self.symbols = symbols
+        all_symbols = [symbol.name for symbol in mt5.symbols_get()]
 
         # Check each symbol in symbol_array to ensure it exists
-        nonexistent_symbols = set(symbols) - set(all_symbols)
+        nonexistent_symbols = set(self.symbols) - set(all_symbols)
         if nonexistent_symbols:
             raise ValueError(f"Symbols {nonexistent_symbols} do not exist")
 
         # If exists, switch it on
-        for real_symbol in symbols:
+        for real_symbol in self.symbols:
             if not mt5.symbol_select(real_symbol, True):
                 raise RuntimeError(f"Unable to switch {real_symbol} on")
-            # TODO: self.symbols_info[real_symbol] = mt5.symbol_info(real_symbol)
+
         return
 
     def create_order(
@@ -74,7 +75,7 @@ class BrokerSession():
         stop_loss: float,
         take_profit: float,
         deviation: int = 10,
-    ) -> None:
+    ) -> mt5.TradeOrder:
         """Create a new market order. This new order will be transactioned almost immidiately
 
         Args:
@@ -88,8 +89,8 @@ class BrokerSession():
         Returns:
             mt5.OrderSendResult: _description_
         """
-        if not self.symbols_info.get(symbol):
-            raise ValueError(f"Symbol {symbol} not initilized")
+        # if not self.symbols_info.get(symbol):
+        #     raise ValueError(f"Symbol {symbol} not initilized")
 
         if order_type not in ORDER_TYPES_BOOK:
             raise ValueError("action must be 'buy' or 'sell'")
@@ -110,8 +111,8 @@ class BrokerSession():
 
         digits = symbol_info.digits
         # spread = symbol_info.spread
-        micro_lot = symbol_info.volume_step
-        lot_size = micro_lot * lot_units
+        # micro_lot = symbol_info.volume_step
+        # lot_size = micro_lot * lot_units
         # volume_min = symbol_info.volume_min
         # volume_max = symbol_info.volume_max
 
@@ -121,13 +122,13 @@ class BrokerSession():
             "symbol": symbol,
             "type": ORDER_TYPES_BOOK[order_type],
             "price": round(open_price, digits),
-            "volume": round(lot_size, 3),
+            "volume": round(lot_size, 2),
             "sl": round(stop_loss, digits),
             "tp": round(take_profit, digits),
             "deviation": deviation,
-            "type_filling": 1,  # filling_type,
-            "type_time": mt5.ORDER_TIME_GTC,
-            "comment": f"open {order_type} for {symbol}",
+            "type_time": mt5.ORDER_TIME_GTC,  # The order stays in the queue until it is manually canceled
+            "type_filling": mt5.ORDER_FILLING_IOC,  # mt5.ORDER_FILLING_IOC,
+            "comment": f"open {order_type} {symbol}",
         }
 
         # Send the order to MT5
@@ -137,31 +138,33 @@ class BrokerSession():
         if order_result.retcode != mt5.TRADE_RETCODE_DONE:
             raise RuntimeError(f"Error creating order. Code: {order_result.retcode}, details: {order_result.comment}")
 
-        print(f"Successfully order created {symbol}")
-        # TODO: crear un algoritmo que sume estas ordenes a una mini-cache
-        return order_result
+        return mt5.orders_get(symbol=symbol)
 
     def close_position(
         self,
-        position: object,
-        # price: float,
+        position: mt5.TradePosition,
+        order_type: str,
         deviation: int = 10,
     ):
-        # Create the inverse request
-        open_request = position.request
-        close_price = mt5.symbol_info_tick(open_request.symbol).bid
+        if order_type == "sell":
+            # maximum price that a buyer is willing to pay for a share
+            close_price = mt5.symbol_info_tick(position.symbol).bid
+        else:
+            # minimum price that a seller is willing to take for that same share
+            close_price = mt5.symbol_info_tick(position.symbol).ask
 
+        # Create the inverse request
         close_request = {
-            "action": open_request.action,  # TODO: Revisar si esta wea no ocasiona un bug
-            "position": position.order,
-            "symbol": open_request.symbol,
+            "action": mt5.TRADE_ACTION_DEAL,
+            "position": position.ticket,
+            "symbol": position.symbol,
             "volume": position.volume,
-            "type": INV_ORDER_TYPES_BOOK[open_request.type],
+            "type": INV_ORDER_TYPES_BOOK[order_type],
             "price": close_price,
             "deviation": deviation,
-            "type_filling": open_request.type_filling,
-            "type_time": open_request.type_time,
-            "comment": f"close {open_request.symbol}",
+            "type_time": mt5.ORDER_TIME_GTC,  # The order stays in the queue until it is manually canceled
+            "type_filling": mt5.ORDER_FILLING_IOC,  # Fill or kill means that the order must be filled completely or canceled immediately
+            "comment": f"close {order_type} {position.symbol}",
         }
 
         # Send the order to MT5
@@ -171,7 +174,6 @@ class BrokerSession():
         if order_result.retcode != mt5.TRADE_RETCODE_DONE:
             raise RuntimeError(f"Error closing position. Code {order_result.retcode}, details: {order_result.comment}")
 
-        print(f"Successfully position closed {open_request.symbol}")
         return order_result
 
     def cancel_order(self, order: mt5.OrderSendResult) -> bool:
@@ -195,9 +197,8 @@ class BrokerSession():
 
         # Notify based on return outcomes
         if order_result.retcode != mt5.TRADE_RETCODE_DONE:
-            raise RuntimeError(f"Error closing order. Code {order_result.retcode}, Details: {order_result.comment}")
+            raise RuntimeError(f"Error canceling order. Code {order_result.retcode}, Details: {order_result.comment}")
 
-        print(f"Successfully order closed {order.symbol}")
         return order_result
 
     def modify_position(
@@ -234,8 +235,13 @@ class BrokerSession():
             raise RuntimeError(
                 f"Error modifying position. Code {order_result.retcode}, details: {order_result.comment}")
 
-        print(f"Successfully order closed {order_result.symbol}")
         return order_result
+
+    def get_positions(
+        self,
+        symbol: str = None,
+    ) -> tuple[mt5.TradePosition]:
+        return mt5.positions_get(symbol=symbol)
 
     def get_ticks(
         self,
@@ -279,7 +285,7 @@ class BrokerSession():
         self,
         symbol: str,
         timeframe: str,
-        number_of_candles: int,
+        n_candles: int,
         as_dataframe: bool = False,
         format_time: bool = False,
         tzone: str = "US/Central"
@@ -289,7 +295,7 @@ class BrokerSession():
         Args:
             symbol (_type_): _description_
             timeframe (_type_): _description_
-            number_of_candles (_type_): _description_
+            n_candles (_type_): _description_
 
         Returns:
             _type_: _description_
@@ -297,7 +303,7 @@ class BrokerSession():
         mt5_timeframe = TIMEFRAMES_BOOK[timeframe]
 
         # Extract n Candles before now
-        rates = mt5.copy_rates_from_pos(symbol, mt5_timeframe, 0, number_of_candles)
+        rates = mt5.copy_rates_from_pos(symbol, mt5_timeframe, 0, n_candles)
 
         if not as_dataframe:
             return rates.view(recarray)
@@ -460,6 +466,7 @@ class BrokerSession():
             tuple[float]: price, lot_size, stop_loss, take_profit
         """
         # Calculate the maximum amount that can be risked on a single trade
+        symbol_info = mt5.symbol_info(symbol)
         balance = mt5.account_info().balance
         max_risk_amount = balance * risk_tolerance
 
@@ -470,9 +477,13 @@ class BrokerSession():
         exchange_rate = self.get_exchange_rate(symbol)
         lot_size = max_risk_amount * exchange_rate / (100_000. * pip_amount)
 
-        # Calculate stop loss & take profit abse on the risk/reward ratio and current bid-ask spread
-        symbol_info = mt5.symbol_info(symbol)
+        # Delimit lot size by the min and max allowed amount
+        if lot_size < symbol_info.volume_min:
+            lot_size = symbol_info.volume_min
+        elif lot_size > symbol_info.volume_max:
+            lot_size = symbol_info.volume_max
 
+        # Calculate stop loss & take profit based on the risk/reward ratio and current bid-ask price
         if order_type == "buy":
             # ask is the minimum price that a seller is willing to take for that same share
             open_price = symbol_info.ask
