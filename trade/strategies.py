@@ -48,8 +48,8 @@ class Hyperparameter(
 
         return super(Hyperparameter, cls).__new__(cls, name, value_type, bounds, fixed)
 
-    def _check_bounds(self, value: Union[int, float, str, bool]):
-        if self.fixed:
+    def _check_bounds(self, value: Union[int, float, str, bool], init: bool = False):
+        if self.fixed and not init:
             raise ValueError(f"Hyperparameter {self.name} is fixed. Unable to change")
 
         # No bounds and is not fixed, we're allowed to change hyperparameter
