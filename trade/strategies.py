@@ -1,8 +1,9 @@
 import numpy as np
 from collections import namedtuple
-from metadata import EntrySignal
-from typing import Union
 from inspect import signature
+from typing import Union
+
+from trade.metadata import EntrySignal
 
 
 class Hyperparameter(
