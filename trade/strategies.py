@@ -2,6 +2,9 @@ import numpy as np
 from collections import namedtuple
 from metadata import EntrySignal
 from typing import Union
+from inspect import signature
+
+
 class Hyperparameter(
     namedtuple(
         "Hyperparameter", ("name", "value_type", "bounds", "fixed")
@@ -31,7 +34,7 @@ class Hyperparameter(
         _allowed_types = ["numeric", "categoric", "boolean"]
         if value_type not in _allowed_types:
             raise ValueError(f"Value type should be one of {_allowed_types}")
-    
+
         if bounds is not None or value_type != "boolean":
             if not isinstance(bounds, (list, tuple)):
                 raise ValueError(f"Bounds should be list or tuple. Given {type(bounds).__name__}")
@@ -41,7 +44,7 @@ class Hyperparameter(
                 raise ValueError("Bounds should have at least 1 category. Given 0")
         else:
             bounds = [True, False]
-        
+
         return super(Hyperparameter, cls).__new__(cls, name, value_type, bounds, fixed)
 
     def check(self, value: Union[int, float, str, bool]):
@@ -53,7 +56,7 @@ class Hyperparameter(
             return
 
         # Numeric type should be betwen range
-        if self.value_type == "numeric" and not (self.bounds[0] <= value <= self.bounds[0]):
+        if self.value_type == "numeric" and not (self.bounds[0] <= value <= self.bounds[1]):
             raise ValueError(f"Hyperparameter {self.name} should be between {self.bounds}. Given {value}")
         # Boolean or categoric types should be in allowed values
         elif self.value_type in ["categoric", "boolean"] and value not in self.bounds:
@@ -62,45 +65,61 @@ class Hyperparameter(
 
 class TradingStrategy:
     def __init__(self):
-        self.last_entry_signals = [None] #TODO: jugar con la cantidad de signals
+        self.last_entry_signals = [None]  # TODO: jugar con la cantidad de signals
         self.position = None
         self.data = None
 
     def update_data(self, new_data: np.ndarray):
         # Define how the data should be updated. This new_data is only to update prediction
         ...
-    
-    def generate_entry_signal(self, data: np.ndarray):
+
+    def generate_entry_signal(self, last_data: np.ndarray):
         # Define your entry signal generation logic on this method
         ...
-    
-    def validate_entry_signal(self, entry_signal):
+
+    def validate_entry_signal(self, entry_signal: int) -> bool:
         # Define your entry signal validation logic on this method
-        ...
-    
-    def get_entry_signal(self, data: np.ndarray):
-        # Generate new signal and append it to the last signals queue. 
-        entry_signal = self.generate_entry_signal(data)
-        
+        if entry_signal in EntrySignal._value2member_map_:
+            return True
+        return False
+
+    def get_entry_signal(self, datum: np.ndarray):
+        # Generate new signal and append it to the last signals queue.
+        entry_signal = self.generate_entry_signal(datum)
+
         # If last signals in queue are all the same, return equivalent trade signal. If not, return neutral signal
         if self.validate_entry_signal(entry_signal):
             self.last_entry_signals.append(entry_signal)
             self.last_entry_signals.pop(0)
 
-            if all(signal == 1 for signal in self.last_entry_signals): 
+            if all(signal == 1 for signal in self.last_entry_signals):
                 return EntrySignal.BUY
-            elif all(signal == -1 for signal in self.last_entry_signals): 
+            elif all(signal == -1 for signal in self.last_entry_signals):
                 return EntrySignal.SELL
         return EntrySignal.NEUTRAL
-    
+
+    def get_params(self):
+        init_params = signature(self.__init__).parameters
+        params = {}
+        for name in init_params.keys():
+            if name == "self":
+                continue
+            params[name] = getattr(self, name)
+        return params
+
+    def __repr__(self):
+        params = self.get_params()
+        str_params = ", ".join(f"{name}={value:.3g}" for name, value in params.items())
+        return f"{self.__class__.__name__}({str_params})"
+
 
 class CompoundTradingStrategy(TradingStrategy):
     def __init__(self, strategies):
         self.strategies = strategies
-        
+
     def get_entry_signal(self):
         entry_signals = [stg.get_entry_signal() for stg in self.strategies]
-        
+
         # Signals should be either all BUY or all SELL in a compound strategy
         if all(signal == EntrySignal.BUY for signal in entry_signals):
             return EntrySignal.BUY
@@ -108,66 +127,63 @@ class CompoundTradingStrategy(TradingStrategy):
             return EntrySignal.SELL
         else:
             return EntrySignal.NEUTRAL
-        
+
+
 class MovingAverageStrategy(TradingStrategy):
     config_short_window = Hyperparameter("short_window", "numeric", [1, 200])
     config_long_window = Hyperparameter("long_window", "numeric", [1, 200])
-    
+
     def __init__(self, short_window: int, long_window: int):
         super().__init__()
         self.short_window = short_window
         self.long_window = long_window
-    
-    def generate_entry_signal(self, close_prices):
+
+    def generate_entry_signal(self, datum: np.ndarray) -> int:
         # Calculate short and long moving averages
-        mav_short = np.sum(self.data.close[-self.short_window:]) / self.short_window
-        mav_long = sum(self.data.close[-self.long_window:]) / self.long_window
+        mav_short = (self.data.close[(1 - self.short_window):].sum() + datum.close) / self.short_window
+        mav_long = (self.data.close[(1 - self.long_window):].sum() + datum.close) / self.long_window
 
         # Detect crossover
         if mav_short > mav_long:
-            return 1 # buy
+            return 1  # buy
         elif mav_short < mav_long:
-            return -1 #sell
+            return -1  # sell
         else:
-            return 0 #neutral
+            return 0  # neutral
 
-
-        
-
-
-# Function to update trailing stop if needed
-def update_trailing_stop(order, trailing_stop_pips, pip_size):
-    # Convert trailing_stop_pips into pips
-    trailing_stop_pips = trailing_stop_pips * pip_size
-    # Determine if Red or Green
-    # A Green Position will have a take_profit > stop_loss
-    if order[12] > order[11]:
-        # If Green, new_stop_loss = current_price - trailing_stop_pips
-        new_stop_loss = order[13] - trailing_stop_pips
-        # Test to see if new_stop_loss > current_stop_loss
-        if new_stop_loss > order[11]:
-            print("Update Stop Loss")
-            # Create updated values for order
-            order_number = order[0]
-            symbol = order[16]
-            # New take_profit will be the difference between new_stop_loss and old_stop_loss added to take profit
-            new_take_profit = order[12] + new_stop_loss - order[11]
-            print(new_take_profit)
-            # Send order to modify_position
-            broker.modify_position(order_number=order_number, symbol=symbol, new_stop_loss=new_stop_loss,
-                                   new_take_profit=new_take_profit)
-    elif order[12] < order[11]:
-        # If Red, new_stop_loss = current_price + trailing_stop_pips
-        new_stop_loss = order[13] + trailing_stop_pips
-        # Test to see if new_stop_loss < current_stop_loss
-        if new_stop_loss < order[11]:
-            print("Update Stop Loss")
-            # Create updated values for order
-            order_number = order[0]
-            symbol = order[16]
-            # New take_profit will be the difference between new_stop_loss and old_stop_loss subtracted from old take_profit
-            new_take_profit = order[12] - new_stop_loss + order[11]
-            print(new_take_profit)
-            # Send order to modify_position
-            broker.modify_position(order_number=order_number, symbol=symbol, new_stop_loss=new_stop_loss,
-                                   new_take_profit=new_take_profit)
+# # Function to update trailing stop if needed
+# def update_trailing_stop(order, trailing_stop_pips, pip_size):
+#     # Convert trailing_stop_pips into pips
+#     trailing_stop_pips = trailing_stop_pips * pip_size
+#     # Determine if Red or Green
+#     # A Green Position will have a take_profit > stop_loss
+#     if order[12] > order[11]:
+#         # If Green, new_stop_loss = current_price - trailing_stop_pips
+#         new_stop_loss = order[13] - trailing_stop_pips
+#         # Test to see if new_stop_loss > current_stop_loss
+#         if new_stop_loss > order[11]:
+#             print("Update Stop Loss")
+#             # Create updated values for order
+#             order_number = order[0]
+#             symbol = order[16]
+#             # New take_profit will be the difference between new_stop_loss and old_stop_loss added to take profit
+#             new_take_profit = order[12] + new_stop_loss - order[11]
+#             print(new_take_profit)
+#             # Send order to modify_position
+#             broker.modify_position(order_number=order_number, symbol=symbol, new_stop_loss=new_stop_loss,
+#                                    new_take_profit=new_take_profit)
+#     elif order[12] < order[11]:
+#         # If Red, new_stop_loss = current_price + trailing_stop_pips
+#         new_stop_loss = order[13] + trailing_stop_pips
+#         # Test to see if new_stop_loss < current_stop_loss
+#         if new_stop_loss < order[11]:
+#             print("Update Stop Loss")
+#             # Create updated values for order
+#             order_number = order[0]
+#             symbol = order[16]
+#             # New take_profit will be the difference between new_stop_loss and old_stop_loss subtracted from old take_profit
+#             new_take_profit = order[12] - new_stop_loss + order[11]
+#             print(new_take_profit)
+#             # Send order to modify_position
+#             broker.modify_position(order_number=order_number, symbol=symbol, new_stop_loss=new_stop_loss,
+#                                    new_take_profit=new_take_profit)

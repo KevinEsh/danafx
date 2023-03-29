@@ -77,8 +77,9 @@ class SingleTraderBot:
             # print(latest_tick)
             print(latest_candle.close)
 
-            # If no position is placed, create an entry signal, this signal could be buy, sell or neutral
             if self.state.no_position:
+
+                # If no position is placed, create an entry signal, this signal could be buy, sell or neutral
                 entry_signal = self.strategy.get_entry_signal(latest_candle)
 
                 if self.state.is_entry(entry_signal):
@@ -89,21 +90,23 @@ class SingleTraderBot:
                     print(order_params)
                     self.order = self.broker.create_order(self.symbol, order_type, *order_params)
                     self.state.transition(entry_signal)
-                    print(f"Successfully order created for {self.symbol}")
+                    print(f"Order created for {self.symbol}")
 
             elif self.state.awaiting_position:
+
                 self.position = self.broker.get_positions(self.symbol)[-1]
-                print(f"Successfully position placed for {self.symbol}. Ticket {self.position.ticket}")
+                print(f"Position {self.position.ticket} placed for {self.symbol}")
                 self.state.transition(entry_signal)
 
             elif self.state.on_long or self.state.on_short:
+
                 exit_signal = self.strategy.get_exit_signal(latest_candle)
 
                 if self.state.is_exit(exit_signal):
                     exit_order = self.broker.close_position(self.position, order_type)
                     # self.position = self.broker.get_positions(exit_order)
                     self.state.transition(exit_signal)
-                    print(f"Successfully position closed {self.symbol}")
+                    print(f"Position {self.position.ticket} closed for {self.symbol}")
 
                 else:
                     # strategy.update_trailing_stop(order=position, trailing_stop_pips=10, pip_size=trading_settings['pip_size'])
