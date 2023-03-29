@@ -1,10 +1,11 @@
 import MetaTrader5 as mt5
 from pytz import timezone
+from numpy import recarray
 from datetime import datetime
 from dataclasses import dataclass
 from pandas import DataFrame, to_datetime
-from metadata import ORDER_TYPES_BOOK, TIMEFRAMES_BOOK, INV_ORDER_TYPES_BOOK
-from numpy import recarray
+
+from trade.metadata import ORDER_TYPES_BOOK, TIMEFRAMES_BOOK, INV_ORDER_TYPES_BOOK
 
 
 @dataclass
