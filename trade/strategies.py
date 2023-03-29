@@ -47,7 +47,7 @@ class Hyperparameter(
 
         return super(Hyperparameter, cls).__new__(cls, name, value_type, bounds, fixed)
 
-    def check(self, value: Union[int, float, str, bool]):
+    def _check_bounds(self, value: Union[int, float, str, bool]):
         if self.fixed:
             raise ValueError(f"Hyperparameter {self.name} is fixed. Unable to change")
 
@@ -135,8 +135,28 @@ class MovingAverageStrategy(TradingStrategy):
 
     def __init__(self, short_window: int, long_window: int):
         super().__init__()
-        self.short_window = short_window
-        self.long_window = long_window
+        self._short_window = short_window
+        self._long_window = long_window
+
+    @property
+    def short_window(self):
+        return self._short_window
+
+    @short_window.setter
+    def short_window(self, short_window):
+        self.config_short_window._check_bounds(short_window)
+        self._short_window = short_window
+        return
+
+    @property
+    def long_window(self):
+        return self._long_window
+
+    @long_window.setter
+    def long_window(self, long_window):
+        self.config_long_window._check_bounds(long_window)
+        self._long_window = long_window
+        return
 
     def generate_entry_signal(self, datum: np.ndarray) -> int:
         # Calculate short and long moving averages
