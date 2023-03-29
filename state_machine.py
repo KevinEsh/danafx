@@ -1,4 +1,4 @@
-from metadata import EntrySignal, ExitSignal, AssetState
+from trade.metadata import EntrySignal, ExitSignal, AssetState
 from typing import Union
 
 
@@ -14,22 +14,22 @@ class AssetStateMachine:
         # Looking for buy/sell entries when there is no positions
         if self._state == AssetState.NULL_POSITION:
 
-            if signal == EntrySignal.NEUTRAL.value:
+            if signal == EntrySignal.NEUTRAL:
                 return
-            if signal in [EntrySignal.BUY.value, EntrySignal.SELL.value]:
+            if signal in [EntrySignal.BUY, EntrySignal.SELL]:
                 self._state = AssetState.WAITING_POSITION
                 return
             else:
                 raise ValueError(f"Entry {signal=} not recognized")
 
         elif self._state == AssetState.WAITING_POSITION:
-            if signal == EntrySignal.BUY.value:
+            if signal == EntrySignal.BUY:
                 self._state = AssetState.LONG_POSITION
                 return
-            elif signal == EntrySignal.SELL.value:
+            elif signal == EntrySignal.SELL:
                 self._state = AssetState.SHORT_POSITION
                 return
-            elif signal == EntrySignal.NEUTRAL.value:
+            elif signal == EntrySignal.NEUTRAL:
                 return
             else:
                 raise ValueError(f"Entry {signal=} not recognized")
@@ -37,21 +37,21 @@ class AssetStateMachine:
         # Looking for buy/sell entries when there is no positions
         elif self._state in [AssetState.LONG_POSITION, AssetState.SHORT_POSITION]:
             # Strategic exit is raised by touching a Take-Profit
-            if signal == ExitSignal.EXIT.value:
+            if signal == ExitSignal.EXIT:
                 self._state = AssetState.NULL_POSITION
                 return
-            elif signal == ExitSignal.HOLD.value:
+            elif signal == ExitSignal.HOLD:
                 return
             else:
                 raise ValueError(f"Exit {signal=} not recognized")
 
     def is_entry(self, signal: EntrySignal) -> bool:
-        if signal in [EntrySignal.BUY.value, EntrySignal.SELL.value]:
+        if signal in [EntrySignal.BUY, EntrySignal.SELL]:
             return True
         return False
 
     def is_exit(self, signal: ExitSignal) -> bool:
-        if signal == ExitSignal.EXIT.value:
+        if signal == ExitSignal.EXIT:
             return True
         return False
 
