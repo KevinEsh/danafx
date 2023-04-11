@@ -1,7 +1,7 @@
 from pandas import DataFrame, Series
 from numpy import ndarray, linspace, newaxis
 from sklearn.datasets import make_regression
-from utils import HL2, HLC3, RSISmoothIndicator, CCISmoothIndicator, WaveTrendIndicator, \
+from trade.indicators import HL2, HLC3, RSISmoothIndicator, CCISmoothIndicator, WaveTrendIndicator, \
     ADXSmoothIndicator, get_signal_labels
 
 
