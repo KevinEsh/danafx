@@ -53,7 +53,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from preprocessing.preprocessing import preprocess_stock_data
     from setup import get_settings
-    from broker import BrokerSession
+    from trade.broker import BrokerSession
     # from matplotlib.pyplot import plot, savefig
 
     # Import project settings
