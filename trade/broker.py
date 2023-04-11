@@ -247,7 +247,7 @@ class BrokerSession():
     def get_ticks(
         self,
         symbol: str,
-        number_of_ticks: int,
+        n_ticks: int,
         as_dataframe: bool = False,
         format_time: bool = False,
         tzone: str = "US/Central",
@@ -256,7 +256,7 @@ class BrokerSession():
 
         Args:
             symbol (str): Symbol to extract data
-            number_of_ticks (int): Number of ticks retrieved before now
+            n_ticks (int): Number of ticks retrieved before now
             tzone (str, optional): Convert the datetime to specific timezone. Defaults to "US/Central".
 
         Returns:
@@ -266,7 +266,7 @@ class BrokerSession():
         from_date = datetime.now()
 
         # Extract n Ticks before now
-        ticks = mt5.copy_ticks_from(symbol, from_date, number_of_ticks,  mt5.COPY_TICKS_ALL)
+        ticks = mt5.copy_ticks_from(symbol, from_date, n_ticks,  mt5.COPY_TICKS_ALL)
 
         if not as_dataframe:
             return ticks.view(recarray)
