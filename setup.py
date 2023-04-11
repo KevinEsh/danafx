@@ -1,7 +1,7 @@
 from json import load
 from os.path import exists
 import mplfinance as fplt
-from utils import get_signal_labels, HLC3
+from trade.indicators import get_signal_labels, HLC3
 from numpy import nan
 
 # Function to import settings from settings.json
