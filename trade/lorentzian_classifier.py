@@ -53,7 +53,8 @@ class LorentzianClassifier:
             neighbor_count = 0
             largest_distance = -1
             for i, d in enumerate(distances):
-                if largest_distance
+                if largest_distance:
+                    pass  # TODO
 
     def update(self, new_data: Any) -> None:
         # TODO: modificar esta funcion para poder actualizar los datos de entrenamiento cada cierto tiempo/iteraciones
@@ -93,7 +94,7 @@ class LorentzianClassifier:
 if __name__ == "__main__":
     # import pandas as pd
     from setup import get_settings
-    from broker import TraderBot
+    from trade.broker import TraderBot
     # from matplotlib.pyplot import plot, savefig
 
     strategy_settings = get_settings("settings\demo\lorentzian_classifier.json")
@@ -110,7 +111,7 @@ if __name__ == "__main__":
     df = trader.query_historic_data("EURUSD", "H4", 5000)
     source_columns = strategy_settings["source_data"].keys()
 
-    data, target =
+    data, target = None, None  # TODO
     train_data = data  # [:-90, :]
     train_target = target  # [:-90]
 
