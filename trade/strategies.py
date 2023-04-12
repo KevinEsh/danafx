@@ -1,7 +1,7 @@
 import numpy as np
 from collections import namedtuple
 from inspect import signature
-from typing import Union
+from typing import Union, Any
 
 from trade.metadata import EntrySignal, ExitSignal
 
@@ -62,7 +62,6 @@ class Hyperparameter(
             ValueError(f"Hyperparameter {self.name} needs tuple or list value. Given {type(value).__name__}")
         # categoric value are allowed any
 
-            
         if self.fixed and not init:
             raise ValueError(f"Hyperparameter {self.name} is fixed. Unable to change")
 
@@ -75,7 +74,7 @@ class Hyperparameter(
             raise ValueError(f"Hyperparameter {self.name} should be between {self.bounds}. Given {value}")
         # Interval type should be inside the wider interval
         if self.value_type == "interval" and (not (self.bounds[0] <= value[0]) or not (value[1] <= self.bounds[1])):
-            raise ValueError(f"Hyperparameter {self.name} should be between {self.bounds}. Given {value}")
+            raise ValueError(f"Hyperparameter {self.name} should be within {self.bounds}. Given {value}")
         # Boolean or categoric types should be in allowed values
         elif self.value_type in ["categoric", "boolean"] and value not in self.bounds:
             raise ValueError(f"Hyperparameter {self.name} should be between {self.bounds}. Given {value}")
@@ -83,24 +82,28 @@ class Hyperparameter(
 
 class TradingStrategy:
     def __init__(self):
+        self.position = None
+        self.train_data = None
+        self.train_labels = None
         self.last_entry_signals = [None]  # TODO: jugar con la cantidad de signals
         self.last_exit_signals = [None]  # TODO: jugar con la cantidad de signals
-        self.position = None
-        self.data = None
 
-    def update_data(self, new_data: np.ndarray):
+    def fit(self, train_data: Any, train_labels: Any = None) -> None:
+        self.train_data = train_data
+        self.train_labels = train_labels
+
+    def update_data(self, new_data: Any) -> None:
         # Define how the data should be updated. This new_data is only to update prediction
-        ...
+        # Compare if latest candlestick is the same. If true, update queue.
+        if new_data.date[0] > self.train_data.date[-1]:
+            # Append new data to the train array then delete a release memory from oldest one
+            new_rows = new_data.shape[0]
+            self.train_data = np.append(self.train_data, new_data, axis=0)
+            self.train_data = np.delete(self.train_data, np.s_[:new_rows], axis=0)
 
     def generate_entry_signal(self, datum: np.ndarray):
         # Define your entry signal generation logic on this method
         ...
-
-    def validate_entry_signal(self, entry_signal: int) -> bool:
-        # Define your entry signal validation logic on this method
-        if entry_signal in [1, 0, -1]:  # EntrySignal._value2member_map_:
-            return True
-        return False
 
     def get_entry_signal(self, datum: np.ndarray):
         # Generate new signal and append it to the last signals queue.
@@ -139,6 +142,12 @@ class TradingStrategy:
             if all(signal == 1 for signal in self.last_exit_signals):
                 return ExitSignal.EXIT
         return ExitSignal.HOLD
+
+    def validate_entry_signal(self, entry_signal: int) -> bool:
+        # Define your entry signal validation logic on this method
+        if entry_signal in EntrySignal._value2member_map_:
+            return True
+        return False
 
     def get_params(self):
         init_params = signature(self.__init__).parameters
@@ -228,9 +237,32 @@ class MovingAverageStrategy(TradingStrategy):
         self.config_long_window._check_bounds(long_window)
         self._long_window = long_window
         return
+
+    def fit(self, train_data: Any) -> None:
+        super().fit(train_data)
+        # Precalculate MAVs. This will save a lot of computational time
+        self._cached_mav_short = self.data.close[(1 - self.short_window):].sum()
+        self._cached_mav_long = self.data.close[(1 - self.long_window):].sum()
+        return
+
+    def update_data(self, new_data: Any) -> None:
+        # if some new data has came up, just remove oldest contribution and add new one
+        size = new_data.size
+        s1 = 1 - self.short_window
+        s2 =  s1 + size
+        l1 = 1 - self.long_window
+        l2 =  s1 + size
+
+        new_mav = new_data.close.sum()
+        self._cached_mav_short += new_mav - self.train_data.close[s1:s2].sum() 
+        self._cached_mav_long += new_mav - self.train_data.close[l1:l2].sum() 
+        # Then delete oldest data
+        super().update_data(new_data)
+    
+    def generate_entry_signal(self, datum: np.ndarray) -> int:
         # Calculate short and long moving averages
-        # mav_short = (self.data.close[(1 - self.short_window):].sum() + datum.close) / self.short_window
-        # mav_long = (self.data.close[(1 - self.long_window):].sum() + datum.close) / self.long_window
+        mav_short = (self._cached_mav_short + datum.close) / self.short_window
+        mav_long = (self.data.close[(1 - self.long_window):].sum() + datum.close) / self.long_window
 
         # Detect crossover
         # if mav_short > mav_long:
