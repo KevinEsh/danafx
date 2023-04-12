@@ -49,10 +49,10 @@ class Hyperparameter(
         return super(Hyperparameter, cls).__new__(cls, name, value_type, bounds, fixed)
 
     def _check_bounds(
-            self, 
-            value: Union[int, float, str, bool, list, tuple], 
-            init: bool = False
-        ):
+        self,
+        value: Union[int, float, str, bool, list, tuple],
+        init: bool = False
+    ):
         # Check value type
         if self.value_type == "numeric" and not isinstance(value, (int, float)):
             ValueError(f"Hyperparameter {self.name} needs int or float value. Given {type(value).__name__}")
@@ -180,43 +180,14 @@ class CompoundTradingStrategy(TradingStrategy):
             return EntrySignal.NEUTRAL
 
 
-class MovingAverageStrategy(TradingStrategy):
-    config_short_window = Hyperparameter("short_window", "numeric", (1, 200))
-    config_long_window = Hyperparameter("long_window", "numeric", (1, 200))
+class MAVStrategy(TradingStrategy):
+    config_short_window = Hyperparameter("short_window", "numeric", (1, 1000))
+    config_long_window = Hyperparameter("long_window", "numeric", (1, 1000))
 
     def __init__(self, short_window: int, long_window: int):
         super().__init__()
         self._short_window = short_window
         self._long_window = long_window
-
-    def generate_entry_signal(self, datum: np.ndarray) -> int:
-        # Calculate short and long moving averages
-        mav_short = (self.data.close[(1 - self.short_window):].sum() + datum.close) / self.short_window
-        mav_long = (self.data.close[(1 - self.long_window):].sum() + datum.close) / self.long_window
-
-        print(f"{mav_short=:.5f} {mav_long=:.5f}")
-
-        # Detect crossover
-        if mav_short > mav_long:
-            return 1  # buy
-        elif mav_short < mav_long:
-            return -1  # sell
-        else:
-            return 0  # neutral
-
-    def generate_exit_signal(self, candle: np.ndarray) -> int:
-        order_type = self.position.type
-        open_price = self.position.price_open
-        p = 1
-
-        print(f"{open_price=} {candle.close=}")
-
-        if order_type == 0 and (open_price + 0.0001 * p <= candle.close):
-            return 1
-        elif order_type == 1 and (open_price - 0.0001 * p >= candle.close):
-            return 1
-
-        return 0
 
     @property
     def short_window(self):
@@ -226,7 +197,6 @@ class MovingAverageStrategy(TradingStrategy):
     def short_window(self, short_window):
         self.config_short_window._check_bounds(short_window)
         self._short_window = short_window
-        return
 
     @property
     def long_window(self):
@@ -236,33 +206,146 @@ class MovingAverageStrategy(TradingStrategy):
     def long_window(self, long_window):
         self.config_long_window._check_bounds(long_window)
         self._long_window = long_window
-        return
 
     def fit(self, train_data: Any) -> None:
-        super().fit(train_data)
         # Precalculate MAVs. This will save a lot of computational time
+        super().fit(train_data)
         self._cached_mav_short = self.data.close[(1 - self.short_window):].sum()
         self._cached_mav_long = self.data.close[(1 - self.long_window):].sum()
         return
 
     def update_data(self, new_data: Any) -> None:
-        # if some new data has came up, just remove oldest contribution and add new one
+        # calculate window from old data to delete
         size = new_data.size
         s1 = 1 - self.short_window
-        s2 =  s1 + size
+        s2 = s1 + size
         l1 = 1 - self.long_window
-        l2 =  s1 + size
+        l2 = s1 + size
 
+        # if some new data has came up, just remove oldest contribution and add new one
         new_mav = new_data.close.sum()
-        self._cached_mav_short += new_mav - self.train_data.close[s1:s2].sum() 
-        self._cached_mav_long += new_mav - self.train_data.close[l1:l2].sum() 
-        # Then delete oldest data
-        super().update_data(new_data)
-    
-    def generate_entry_signal(self, datum: np.ndarray) -> int:
+        self._cached_mav_short += new_mav - self.train_data.close[s1:s2].sum()
+        self._cached_mav_long += new_mav - self.train_data.close[l1:l2].sum()
+
+        # Then replace oldest data
+        return super().update_data(new_data)  # TODO Aqui va a haber un pedo cuando se actualicen con strategias compuestas
+
+    def generate_entry_signal(self, datum: np.recarray) -> int:
         # Calculate short and long moving averages
         mav_short = (self._cached_mav_short + datum.close) / self.short_window
-        mav_long = (self.data.close[(1 - self.long_window):].sum() + datum.close) / self.long_window
+        mav_long = (self._cached_mav_long + datum.close) / self.long_window
+
+        print(f"{mav_short=:.5f} {mav_long=:.5f}")
+
+        # Detect tendency and return signal
+        if mav_short > mav_long:
+            return 0  # buy
+        elif mav_short < mav_long:
+            return 1  # sell
+        else:
+            return -1  # neutral
+
+
+class RSIStrategy(TradingStrategy):
+    config_window = Hyperparameter("window", "numeric", (2, 1000))
+    config_sell_band = Hyperparameter("sell_band", "interval", (0, 100))
+    config_buy_band = Hyperparameter("buy_band", "interval", (0, 100))
+
+    def __init__(self, window: int, sell_band: tuple, buy_band: tuple):
+        super().__init__()
+        self._window = window
+        self._sell_band = sell_band
+        self._buy_band = buy_band
+
+    @property
+    def window(self):
+        return self._window
+
+    @window.setter
+    def window(self, window):
+        self.config_window._check_bounds(window)
+        self._window = window
+
+    @property
+    def sell_band(self):
+        return self._sell_band
+
+    @sell_band.setter
+    def sell_band(self, sell_band):
+        self.config_sell_band._check_bounds(sell_band)
+        self._sell_band = sell_band
+
+    @property
+    def buy_band(self):
+        return self._buy_band
+
+    @buy_band.setter
+    def buy_band(self, buy_band):
+        self.config_buy_band._check_bounds(buy_band)
+        self._buy_band = buy_band
+
+    def fit(self, train_data: Any) -> None:
+        # Precalculate Sum Loss and Gain. This will save a lot of computational time
+        super().fit(train_data)
+
+        self._deltas = np.diff(self.train_data.close[(1 - self._window):])
+
+        self._cached_sum_gain = self._deltas[self._deltas > 0].sum()
+        self._cached_sum_loss = abs(self._deltas[self._deltas < 0].sum())
+
+        # TODO
+        # if self._is_exp_weigthed:
+        #     self._alpha = 1 / self._window
+        #     # Weight gain with exp moving
+        #     for i in range(1, self._cached_sum_gain.size):
+        #         self._cached_sum_gain[i] = self._alpha * self._cached_sum_gain[i] + \
+        #             (1 - self._alpha) * self._cached_sum_gain[i - 1]
+        #     # Weight loss with exp moving
+        #     for i in range(1, self._cached_sum_loss.size):
+        #         self._cached_sum_loss[i] = self._alpha * self._cached_sum_loss[i] + \
+        #             (1 - self._alpha) * self._cached_sum_loss[i - 1]
+
+    def update_data(self, new_data: Any) -> None:
+        # calculate new diff and the lacking diff between the old and new
+        new_deltas = np.diff(new_data.close, prepend=self.train_data.close[-1])
+
+        self._deltas = np.append(self._deltas, new_deltas)
+        old_deltas = self._deltas[:new_deltas.size]
+
+        # Recalculate sum gain and loss
+        self._cached_sum_gain += new_deltas[new_deltas > 0].sum() - old_deltas[old_deltas > 0]
+        self._cached_sum_loss += abs(new_deltas[new_deltas < 0].sum()) - abs(old_deltas[old_deltas < 0])
+
+        # Then replace oldest data
+        self._deltas = np.delete(self._deltas, np.s_[:new_deltas.size])
+        return super().update_data(new_data)  # TODO Aqui va a haber un pedo cuando se actualicen con strategias compuestas
+
+    def generate_entry_signal(self, datum: np.recarray) -> int:
+        # Calculate short and long moving averages
+        change = datum.close - self.train_data.close[-1]
+
+        if change > 0:
+            avg_gain = (self._cached_sum_gain + change) / self._window
+            avg_loss = (self._cached_sum_loss) / self._window
+        else:
+            avg_gain = (self._cached_sum_gain) / self._window
+            avg_loss = (self._cached_sum_loss + abs(change)) / self._window
+
+        # Calculate Relative Strenth index
+        if avg_loss == 0:
+            rsi = 100.
+        else:
+            rsi = 100. - (100. / (1 + avg_gain / avg_loss))
+
+        print(f"{rsi=:.5f}")
+
+        # Return signal based on sell/buy bands
+        if self._buy_band[0] <= rsi <= self._buy_band[1]:
+            return 0  # buy
+        elif self._sell_band[0] <= rsi <= self._sell_band[1]:
+            return 1  # sell
+        else:
+            return -1  # neutral
 
         # Detect crossover
         # if mav_short > mav_long:
