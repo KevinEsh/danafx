@@ -32,14 +32,14 @@ class Hyperparameter(
     __slots__ = ()
 
     def __new__(cls, name, value_type, bounds=None, fixed=False):
-        _allowed_types = ["numeric", "categoric", "boolean"]
+        _allowed_types = ["numeric", "categoric", "boolean", "interval"]
         if value_type not in _allowed_types:
             raise ValueError(f"Value type should be one of {_allowed_types}")
 
         if bounds is not None or value_type != "boolean":
             if not isinstance(bounds, (list, tuple)):
                 raise ValueError(f"Bounds should be list or tuple. Given {type(bounds).__name__}")
-            elif value_type == "numeric" and len(bounds) != 2:
+            elif value_type in ["numeric", "interval"] and len(bounds) != 2:
                 raise ValueError(f"Bounds should have 2 dimensions. Given {len(bounds)}")
             elif value_type == "categoric" and len(bounds) == 0:
                 raise ValueError("Bounds should have at least 1 category. Given 0")
@@ -48,8 +48,22 @@ class Hyperparameter(
 
         return super(Hyperparameter, cls).__new__(cls, name, value_type, bounds, fixed)
 
-    def _check_bounds(self, value: Union[int, float, str, bool]):
-        if self.fixed:
+    def _check_bounds(
+            self, 
+            value: Union[int, float, str, bool, list, tuple], 
+            init: bool = False
+        ):
+        # Check value type
+        if self.value_type == "numeric" and not isinstance(value, (int, float)):
+            ValueError(f"Hyperparameter {self.name} needs int or float value. Given {type(value).__name__}")
+        elif self.value_type == "boolean" and not isinstance(value, bool):
+            ValueError(f"Hyperparameter {self.name} needs bool value. Given {type(value).__name__}")
+        elif self.value_type == "interval" and not isinstance(value, (tuple, list)):
+            ValueError(f"Hyperparameter {self.name} needs tuple or list value. Given {type(value).__name__}")
+        # categoric value are allowed any
+
+            
+        if self.fixed and not init:
             raise ValueError(f"Hyperparameter {self.name} is fixed. Unable to change")
 
         # No bounds and is not fixed, we're allowed to change hyperparameter
@@ -58,6 +72,9 @@ class Hyperparameter(
 
         # Numeric type should be betwen range
         if self.value_type == "numeric" and not (self.bounds[0] <= value <= self.bounds[1]):
+            raise ValueError(f"Hyperparameter {self.name} should be between {self.bounds}. Given {value}")
+        # Interval type should be inside the wider interval
+        if self.value_type == "interval" and (not (self.bounds[0] <= value[0]) or not (value[1] <= self.bounds[1])):
             raise ValueError(f"Hyperparameter {self.name} should be between {self.bounds}. Given {value}")
         # Boolean or categoric types should be in allowed values
         elif self.value_type in ["categoric", "boolean"] and value not in self.bounds:
