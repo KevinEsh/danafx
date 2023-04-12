@@ -162,7 +162,7 @@ def get_signal_labels(source: Series, window: int = -4) -> Series:
 
 
 if __name__ == "__main__":
-    from broker import BrokerSession
+    from trade.broker import BrokerSession
     from matplotlib.pyplot import plot, savefig
     from setup import get_settings
 
