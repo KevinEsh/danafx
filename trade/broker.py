@@ -5,7 +5,7 @@ from datetime import datetime
 from dataclasses import dataclass
 from pandas import DataFrame, to_datetime
 
-from trade.metadata import ORDER_TYPES_BOOK, TIMEFRAMES_BOOK, INV_ORDER_TYPES_BOOK
+from trade.metadata import OrderTypes, TimeFrames, InverseOrderTypes
 
 
 @dataclass
@@ -41,7 +41,7 @@ class BrokerSession():
 
         return
 
-    def initialize_symbols(self, symbols: list[str]) -> None:
+    def enable_symbols(self, symbols: list[str]) -> None:
         """Function to initialize a symbol on MT5
 
         Args:
@@ -93,20 +93,23 @@ class BrokerSession():
         # if not self.symbols_info.get(symbol):
         #     raise ValueError(f"Symbol {symbol} not initilized")
 
-        if order_type not in ORDER_TYPES_BOOK:
-            raise ValueError("action must be 'buy' or 'sell'")
+        if order_type not in OrderTypes._member_names_:
+            raise ValueError(f"{order_type=} not supported. Must be {OrderTypes._member_names_}")
 
         # Find the filling mode of symbol
+        order_type = OrderTypes[order_type]
         symbol_info = mt5.symbol_info(symbol)
         # filling_type = symbol_info.filling_mode #TODO: averiguar como funciona esta wea
 
-        if price == None:
-            if order_type == "sell":
+        if not price:
+            if order_type == OrderTypes.SELL:
                 # maximum price that a buyer is willing to pay for a share
                 open_price = symbol_info.bid
-            else:
+            elif order_type == OrderTypes.BUY:
                 # minimum price that a seller is willing to take for that same share
                 open_price = symbol_info.ask
+            else:
+                open_price = (symbol_info.ask + symbol_info.bid) / 2
         else:
             open_price = price
 
@@ -121,7 +124,7 @@ class BrokerSession():
         request = {
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": symbol,
-            "type": ORDER_TYPES_BOOK[order_type],
+            "type": order_type.value,
             "price": round(open_price, digits),
             "volume": round(lot_size, 2),
             "sl": round(stop_loss, digits),
@@ -129,7 +132,7 @@ class BrokerSession():
             "deviation": deviation,
             "type_time": mt5.ORDER_TIME_GTC,  # The order stays in the queue until it is manually canceled
             "type_filling": mt5.ORDER_FILLING_IOC,  # mt5.ORDER_FILLING_IOC,
-            "comment": f"open {order_type} {symbol}",
+            "comment": f"open {order_type.name.lower()} {symbol}",
         }
 
         # Send the order to MT5
@@ -144,15 +147,20 @@ class BrokerSession():
     def close_position(
         self,
         position: mt5.TradePosition,
-        order_type: str,
         deviation: int = 10,
     ):
-        if order_type == "sell":
+        symbol_info = mt5.symbol_info_tick(position.symbol)
+        order_type = OrderTypes._value2member_map_[position.type]
+        inv_order_type = InverseOrderTypes[order_type.name]
+
+        if order_type == OrderTypes.SELL:
             # maximum price that a buyer is willing to pay for a share
-            close_price = mt5.symbol_info_tick(position.symbol).bid
-        else:
+            close_price = symbol_info.bid
+        elif order_type == OrderTypes.BUY:
             # minimum price that a seller is willing to take for that same share
-            close_price = mt5.symbol_info_tick(position.symbol).ask
+            close_price = symbol_info.ask
+        else:
+            close_price = (symbol_info.ask + symbol_info.bid) / 2
 
         # Create the inverse request
         close_request = {
@@ -160,12 +168,12 @@ class BrokerSession():
             "position": position.ticket,
             "symbol": position.symbol,
             "volume": position.volume,
-            "type": INV_ORDER_TYPES_BOOK[order_type],
+            "type": inv_order_type.value,
             "price": close_price,
             "deviation": deviation,
             "type_time": mt5.ORDER_TIME_GTC,  # The order stays in the queue until it is manually canceled
             "type_filling": mt5.ORDER_FILLING_IOC,  # Fill or kill means that the order must be filled completely or canceled immediately
-            "comment": f"close {order_type} {position.symbol}",
+            "comment": f"close {order_type.name.lower()} {position.symbol}",
         }
 
         # Send the order to MT5
@@ -204,7 +212,7 @@ class BrokerSession():
 
     def modify_position(
         self,
-        order: int,
+        position: mt5.TradePosition,
         new_stop_loss: float = None,
         new_take_profit: float = None,
     ) -> bool:
@@ -222,8 +230,8 @@ class BrokerSession():
         # Create the request
         request = {
             "action": mt5.TRADE_ACTION_SLTP,
-            "position": order.order,
-            "symbol": order.symbol,
+            "position": position.ticket,
+            "symbol": position.symbol,
             "sl": new_stop_loss,
             "tp": new_take_profit,
         }
@@ -243,6 +251,31 @@ class BrokerSession():
         symbol: str = None,
     ) -> tuple[mt5.TradePosition]:
         return mt5.positions_get(symbol=symbol)
+
+    def total_positions(
+        self,
+        symbol: str = None,
+    ) -> tuple[mt5.TradePosition]:
+        if not symbol:
+            return mt5.positions_total()
+        else:
+            return len(self.get_positions(symbol))
+
+    def get_orders(
+        self,
+        symbol: str
+    ) -> tuple[mt5.TradeOrder]:
+        # Function to retrieve all open orders from MT5
+        return mt5.orders_get(symbol=symbol)
+
+    def total_orders(
+        self,
+        symbol: str = None,
+    ) -> tuple[mt5.TradePosition]:
+        if not symbol:
+            return mt5.orders_total()
+        else:
+            return len(self.get_orders(symbol))
 
     def get_ticks(
         self,
@@ -287,6 +320,7 @@ class BrokerSession():
         symbol: str,
         timeframe: str,
         n_candles: int,
+        from_candle: int = 0,
         as_dataframe: bool = False,
         format_time: bool = False,
         tzone: str = "US/Central"
@@ -301,10 +335,10 @@ class BrokerSession():
         Returns:
             _type_: _description_
         """
-        mt5_timeframe = TIMEFRAMES_BOOK[timeframe]
+        mt5_tf = TimeFrames[timeframe].value
 
         # Extract n Candles before now
-        rates = mt5.copy_rates_from_pos(symbol, mt5_timeframe, 0, n_candles)
+        rates = mt5.copy_rates_from_pos(symbol, mt5_tf, from_candle, n_candles)
 
         if not as_dataframe:
             return rates.view(recarray)
@@ -320,27 +354,12 @@ class BrokerSession():
 
         return df_rates.set_index("time")
 
-    def get_open_orders(self) -> list[dict[str, int]]:
-        # Function to retrieve all open orders from MT5
-        # if not self._open_orders and not self.__orders_updated:
-        #     self._open_orders = {order[0]: order for order in mt5.orders_get()}
-        #     self._orders_updated = True
-        # return self._open_orders
-        return mt5.orders_total()
-
-    def get_open_positions(self):
-        # Function to retrieve all open positions
-        # Get position objects
-        self.positions = mt5.positions_get()
-        # Return position objects
-        return self.positions
-
     def get_exchange_rate(self, symbol: str) -> float:
         base_currency = symbol[3:]
         if base_currency == self.account_info.currency:
             exchange_rate = 1.0
         else:
-            m1 = TIMEFRAMES_BOOK["M1"]
+            m1 = TimeFrames["M1"].value
             exchange_symbol = self.account_info.currency + base_currency
             # exchange_rate = mt5.copy_rates_from_pos(exchange_symbol, m1, 0, 1)[0][1]  # open price
             exchange_rate = mt5.copy_rates_from_pos(exchange_symbol, m1, 0, 1)[0][3]  # low price
@@ -485,12 +504,13 @@ class BrokerSession():
             lot_size = symbol_info.volume_max
 
         # Calculate stop loss & take profit based on the risk/reward ratio and current bid-ask price
-        if order_type == "buy":
+        order_type = OrderTypes[order_type]
+        if order_type == OrderTypes.BUY:
             # ask is the minimum price that a seller is willing to take for that same share
             open_price = symbol_info.ask
             take_profit = open_price + rr_ratio * pip_amount
             stop_loss = open_price - pip_amount
-        elif order_type == "sell":
+        elif order_type == OrderTypes.SELL:
             # bid is the maximum price that a buyer is willing to pay for a share
             open_price = symbol_info.bid
             take_profit = open_price - rr_ratio * pip_amount
