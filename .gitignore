@@ -132,7 +132,6 @@ dmypy.json
 *.jpeg
 *.jpg
 *.gif
-*.png
 
 # Credentials
 login.json
