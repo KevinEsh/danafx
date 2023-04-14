@@ -1,7 +1,6 @@
 from setup import get_settings
 # from tabulate import tabulate
 from time import sleep
-import schedule
 from telegram.ext import filters, Updater, MessageHandler, CommandHandler, ContextTypes, Application
 from telegram import __version__ as TG_VER, Update
 import logging
