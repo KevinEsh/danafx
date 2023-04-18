@@ -1,4 +1,4 @@
-from trade.strategies import Hyperparameter, TradingStrategy
+from trade.strategies.abstract import Hyperparameter, TradingStrategy
 from numpy import recarray
 
 
