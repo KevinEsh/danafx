@@ -125,34 +125,19 @@ class RsiStrategy(TradingStrategy):
         # Calculate RSI for current candle
         batch = append(self._last_bars, datum.close)
         rsis = RSI(batch, self._window)
-        print(f"{rsis[-2]=:.2f} {rsis[-1]=:.2f}")
-        print(self._last_bars.size)
+        rsi = rsis[-1+self._lookback]
 
         if self._hold_mode:
-            prev_rsi, rsi = rsis[-2+self._lookback:self._lookback]
+            prev_rsi = rsis[-2+self._lookback]
+            # print(f"{prev_rsi=:.2f} {rsi=:.2f}")
             if is_on_band(prev_rsi, self._buy_band) and not is_on_band(rsi, self._buy_band):
                 return 0
             elif is_on_band(prev_rsi, self._sell_band) and not is_on_band(rsi, self._sell_band):
                 return 1
             else:
                 return -1
-            # if self._was_on_buy_band and not is_on_band(rsi, self._buy_band):
-            #     self._was_on_buy_band = False
-            #     return 0  # buy
-            # elif self._on_sell_band and not is_on_band(rsi, self._sell_band):
-            #     self._on_sell_band = False
-            #     return 1  # sell
-            # elif is_on_band(rsi, self._buy_band):
-            #     self._was_on_buy_band = True
-            #     return -1  # not buy until rsi is out of buy_band
-            # elif is_on_band(rsi, self._sell_band):
-            #     self._was_on_sell_band = True
-            #     return -1  # not buy until rsi is out of sell_band
-            # else:
-            #     return -1  # neutral
         else:
             # Return signal only if last rsi touches sell/buy bands
-            rsi = rsis[-1+self._lookback]
             if is_on_band(rsi, self._buy_band):
                 return 0  # buy
             elif is_on_band(rsi, self._sell_band):
