@@ -1,22 +1,6 @@
-from json import load
-from os.path import exists
 import mplfinance as fplt
 from trade.indicators import get_signal_labels, HLC3
 from numpy import nan
-
-# Function to import settings from settings.json
-
-
-def get_settings(filepath: str) -> dict[str, str]:
-    # Test the filepath to sure it exists
-    if not exists(filepath):
-        raise ImportError(f"{filepath} path does not exist")
-
-    # Open the file and get the information from file
-    with open(filepath, "r") as file:
-        project_settings = load(file)
-
-    return project_settings
 
 
 # def signal_correction(data: list[float], signals: list[int]) -> pd.Series:
@@ -119,7 +103,7 @@ def plot_candlestick_chart(df_rates, symbol: str, timestamp: str) -> None:
 
 # Main function
 if __name__ == '__main__':
-    from strategies.gaussian_regressor import GaussianStockRegressor
+    from trade.strategies.gaussian_regressor import GaussianStockRegressor
     # Import project settings
     login_settings = get_settings("settings/demo/login.json")
     trading_settings = get_settings("settings/demo/trading.json")
