@@ -1,5 +1,4 @@
 from trade.metadata import EntrySignal, ExitSignal, AssetState
-from typing import Union
 
 
 class AssetStateMachine:
@@ -31,15 +30,15 @@ class AssetStateMachine:
             return True
         return False
 
-    @ property
+    @property
     def null_position(self) -> bool:
         return self._state == AssetState.NULL_POSITION
 
-    @ property
+    @property
     def awaiting_position(self) -> bool:
         return self._state == AssetState.WAITING_POSITION
 
-    @ property
+    @property
     def on_position(self) -> bool:
         return self._state == AssetState.ON_POSITION
 
