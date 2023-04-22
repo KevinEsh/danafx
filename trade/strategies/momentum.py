@@ -1,5 +1,5 @@
 from trade.strategies.abstract import Hyperparameter, TradingStrategy, OHLCbounds
-from numpy import recarray, append
+from numpy import recarray, append, sqrt
 
 from talib import RSI
 
@@ -36,7 +36,8 @@ class RsiStrategy(TradingStrategy):
     config_sell_band = Hyperparameter("sell_band", "interval", (0, 100))
     config_source = Hyperparameter("source", "categoric", OHLCbounds)
     config_lookback = Hyperparameter("lookback", "numeric", (-1, 0))
-    config_hold_mode = Hyperparameter("source", "boolean")
+    config_mode = Hyperparameter(
+        "mode", "categoric", ("inband", "outband", "onband"))
 
     def __init__(
         self,
@@ -45,7 +46,7 @@ class RsiStrategy(TradingStrategy):
         sell_band: tuple[float],
         source: str = "close",
         lookback: int = 0,
-        hold_mode: bool = False,
+        mode: str = "outband",
     ):
         super().__init__()
         # Check if hyperparameters met the criteria
@@ -54,7 +55,7 @@ class RsiStrategy(TradingStrategy):
         self.config_sell_band._check_bounds(sell_band, init=True)
         self.config_source._check_bounds(source, init=True)
         self.config_lookback._check_bounds(lookback, init=True)
-        self.config_hold_mode._check_bounds(hold_mode, init=True)
+        self.config_hold_mode._check_bounds(mode, init=True)
 
         # fill user values
         self._window = window
@@ -62,11 +63,10 @@ class RsiStrategy(TradingStrategy):
         self._sell_band = sell_band
         self._lookback = lookback
         self._source = source
-        self._hold_mode = hold_mode
+        self._mode = mode
 
         # calcualte an estimate of bars needed to get a good rsi approximation
-        self.min_bars = int(7.4 * window)  # based on experiments
-        # self._band_trigger = TriggerBandMechanism([buy_band, sell_band], (0, 1))
+        self.min_bars = int(sqrt(840 * window - 1400))  # based on experiments
 
     @property
     def window(self):
@@ -127,16 +127,25 @@ class RsiStrategy(TradingStrategy):
         rsis = RSI(batch, self._window)
         rsi = rsis[-1+self._lookback]
 
-        if self._hold_mode:
+        if self._mode == "outband":
             prev_rsi = rsis[-2+self._lookback]
             # print(f"{prev_rsi=:.2f} {rsi=:.2f}")
             if is_on_band(prev_rsi, self._buy_band) and not is_on_band(rsi, self._buy_band):
-                return 0
+                return 0  # buy
             elif is_on_band(prev_rsi, self._sell_band) and not is_on_band(rsi, self._sell_band):
-                return 1
+                return 1  # sell
             else:
-                return -1
-        else:
+                return -1  # neutral
+        if self._mode == "inband":
+            prev_rsi = rsis[-2+self._lookback]
+            # print(f"{prev_rsi=:.2f} {rsi=:.2f}")
+            if not is_on_band(prev_rsi, self._buy_band) and is_on_band(rsi, self._buy_band):
+                return 0  # buy
+            elif not is_on_band(prev_rsi, self._sell_band) and is_on_band(rsi, self._sell_band):
+                return 1  # sell
+            else:
+                return -1  # neutral
+        elif self._mode == "onband":
             # Return signal only if last rsi touches sell/buy bands
             if is_on_band(rsi, self._buy_band):
                 return 0  # buy
