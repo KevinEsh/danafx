@@ -10,46 +10,46 @@
       "type": "Index"
     },
     "rsi14": {
-      "indicator": "RSISmoothIndicator",
+      "indicator": "RSI",
       "parameters": {
-        "window_rsi": 14,
+        "window": 14,
         "window_smooth": 1,
-        "rescaled": true,
+        "rescaled": "range_scale",
         "fillna": false
       }
     },
     "rsi9": {
-      "indicator": "RSISmoothIndicator",
+      "indicator": "RSI",
       "parameters": {
-        "window_rsi": 9,
+        "window": 9,
         "window_smooth": 1,
-        "rescaled": true,
+        "rescaled": "range_scale",
         "fillna": false
       }
     },
     "wt": {
-      "indicator": "WaveTrendIndicator",
+      "indicator": "WT",
       "parameters": {
-        "window_ema": 10,
+        "window": 10,
         "window_smooth": 11,
-        "rescaled": true,
+        "rescaled": "minmax_scale",
         "fillna": false
       }
     },
     "cci": {
-      "indicator": "CCISmoothIndicator",
+      "indicator": "CCI",
       "parameters": {
-        "window_cci": 20,
+        "window": 20,
         "window_smooth": 1,
-        "rescaled": true,
+        "rescaled": "minmax_scale",
         "fillna": false
       }
     },
     "adx": {
-      "indicator": "ADXIndicator",
+      "indicator": "ADX",
       "parameters": {
-        "window_adx": 20,
-        "rescaled": true,
+        "window": 20,
+        "rescaled": "range_scale",
         "fillna": false
       }
     }
