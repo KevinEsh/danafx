@@ -5,11 +5,12 @@ from datetime import datetime
 from dataclasses import dataclass
 from pandas import DataFrame, to_datetime
 
+from abstract import BrokerSession
 from trade.metadata import OrderTypes, TimeFrames, InverseOrderTypes
 
 
 @dataclass
-class BrokerSession():
+class Mt5Session(BrokerSession):
 
     def start_session(self, login_settings: dict[str, str]) -> None:
         """Start a Meta Trader 5 (MT5) session
@@ -23,7 +24,8 @@ class BrokerSession():
         """
         # Attempt to start MT5
         if not mt5.initialize(**login_settings):
-            raise ConnectionAbortedError(f"Initialization Failed. {mt5.last_error()}")
+            raise ConnectionAbortedError(
+                f"Initialization Failed. {mt5.last_error()}")
 
         # unused params for login function
         login_settings.pop("path")
@@ -94,7 +96,8 @@ class BrokerSession():
         #     raise ValueError(f"Symbol {symbol} not initilized")
 
         if order_type not in OrderTypes._member_names_:
-            raise ValueError(f"{order_type=} not supported. Must be {OrderTypes._member_names_}")
+            raise ValueError(
+                f"{order_type=} not supported. Must be {OrderTypes._member_names_}")
 
         # Find the filling mode of symbol
         order_type = OrderTypes[order_type]
@@ -130,7 +133,8 @@ class BrokerSession():
             "sl": round(stop_loss, digits),
             "tp": round(take_profit, digits),
             "deviation": deviation,
-            "type_time": mt5.ORDER_TIME_GTC,  # The order stays in the queue until it is manually canceled
+            # The order stays in the queue until it is manually canceled
+            "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": mt5.ORDER_FILLING_IOC,  # mt5.ORDER_FILLING_IOC,
             "comment": f"open {order_type.name.lower()} {symbol}",
         }
@@ -140,7 +144,8 @@ class BrokerSession():
 
         # Notify based on return outcomes
         if order_result.retcode != mt5.TRADE_RETCODE_DONE:
-            raise RuntimeError(f"Error creating order. Code: {order_result.retcode}, details: {order_result.comment}")
+            raise RuntimeError(
+                f"Error creating order. Code: {order_result.retcode}, details: {order_result.comment}")
 
         return mt5.orders_get(symbol=symbol)
 
@@ -171,8 +176,10 @@ class BrokerSession():
             "type": inv_order_type.value,
             "price": close_price,
             "deviation": deviation,
-            "type_time": mt5.ORDER_TIME_GTC,  # The order stays in the queue until it is manually canceled
-            "type_filling": mt5.ORDER_FILLING_IOC,  # Fill or kill means that the order must be filled completely or canceled immediately
+            # The order stays in the queue until it is manually canceled
+            "type_time": mt5.ORDER_TIME_GTC,
+            # Fill or kill means that the order must be filled completely or canceled immediately
+            "type_filling": mt5.ORDER_FILLING_IOC,
             "comment": f"close {order_type.name.lower()} {position.symbol}",
         }
 
@@ -181,7 +188,8 @@ class BrokerSession():
 
         # Notify based on return outcomes
         if order_result.retcode != mt5.TRADE_RETCODE_DONE:
-            raise RuntimeError(f"Error closing position. Code {order_result.retcode}, details: {order_result.comment}")
+            raise RuntimeError(
+                f"Error closing position. Code {order_result.retcode}, details: {order_result.comment}")
 
         return order_result
 
@@ -206,7 +214,8 @@ class BrokerSession():
 
         # Notify based on return outcomes
         if order_result.retcode != mt5.TRADE_RETCODE_DONE:
-            raise RuntimeError(f"Error canceling order. Code {order_result.retcode}, Details: {order_result.comment}")
+            raise RuntimeError(
+                f"Error canceling order. Code {order_result.retcode}, Details: {order_result.comment}")
 
         return order_result
 
@@ -299,7 +308,8 @@ class BrokerSession():
         from_date = datetime.now()
 
         # Extract n Ticks before now
-        ticks = mt5.copy_ticks_from(symbol, from_date, n_ticks,  mt5.COPY_TICKS_ALL)
+        ticks = mt5.copy_ticks_from(
+            symbol, from_date, n_ticks,  mt5.COPY_TICKS_ALL)
 
         if not as_dataframe:
             return ticks.view(recarray)
@@ -310,7 +320,8 @@ class BrokerSession():
         # Convert number format of the date into date format
         if format_time:
             cst = timezone(tzone)
-            df_ticks["time"] = to_datetime(df_ticks["time_msc"], unit="ms", utc=True)
+            df_ticks["time"] = to_datetime(
+                df_ticks["time_msc"], unit="ms", utc=True)
             df_ticks["time"] = df_ticks["time"].dt.tz_convert(cst)
 
         return df_ticks.set_index("time")
@@ -349,7 +360,8 @@ class BrokerSession():
         # Convert number format of the date into date format
         if format_time:
             cst = timezone(tzone)
-            df_rates['time'] = to_datetime(df_rates['time'], unit='s', utc=True)
+            df_rates['time'] = to_datetime(
+                df_rates['time'], unit='s', utc=True)
             df_rates['time'] = df_rates['time'].dt.tz_convert(cst)
 
         return df_rates.set_index("time")
@@ -362,7 +374,8 @@ class BrokerSession():
             m1 = TimeFrames["M1"].value
             exchange_symbol = self.account_info.currency + base_currency
             # exchange_rate = mt5.copy_rates_from_pos(exchange_symbol, m1, 0, 1)[0][1]  # open price
-            exchange_rate = mt5.copy_rates_from_pos(exchange_symbol, m1, 0, 1)[0][3]  # low price
+            exchange_rate = mt5.copy_rates_from_pos(
+                exchange_symbol, m1, 0, 1)[0][3]  # low price
 
         return exchange_rate
 
@@ -417,7 +430,8 @@ class BrokerSession():
         balance = mt5.account_info().balance
         exchange_rate = self.get_exchange_rate(symbol)
         # margin_free = mt5.account_info().margin_free
-        pip_amount = risk_tolerance * balance * exchange_rate / (100_000 * lot_size)
+        pip_amount = risk_tolerance * balance * \
+            exchange_rate / (100_000 * lot_size)
 
         if order_type == "buy":
             take_profit = price + rr_ratio * pip_amount

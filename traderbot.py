@@ -2,7 +2,7 @@ from time import sleep
 from utils.console import logger
 
 from trade.metadata import AssetState
-from trade.broker import BrokerSession
+from trade.brokers import BrokerSession, Mt5Session
 from trade.state_machine import AssetStateMachine
 from trade.strategies.abstract import TradingStrategy
 
@@ -87,9 +87,11 @@ class SingleTraderBot:
                 if self.state.is_entry(entry_signal):
                     order_params = self.broker.calc_risk_params(
                         self.symbol, entry_signal.name, **self.risk_params)
-                    self.broker.create_order(self.symbol, entry_signal.name, *order_params)
+                    self.broker.create_order(
+                        self.symbol, entry_signal.name, *order_params)
                     self.state.next()
-                    logger.info(f"order {entry_signal.name.lower()} created on {self.symbol}")
+                    logger.info(
+                        f"order {entry_signal.name.lower()} created on {self.symbol}")
 
             if self.state.awaiting_position:
                 positions = self.broker.get_positions(self.symbol)
@@ -97,11 +99,13 @@ class SingleTraderBot:
                 if positions:
                     self.strategy.position = positions[-1]
                     self.state.next()
-                    logger.info(f"position {self.strategy.position.ticket} placed for {self.symbol}")
+                    logger.info(
+                        f"position {self.strategy.position.ticket} placed for {self.symbol}")
 
             elif self.state.on_position:
                 if self.broker.total_positions(self.symbol) == 0:
-                    logger.info(f"position {self.strategy.position.ticket} on {self.symbol} closed by broker")
+                    logger.info(
+                        f"position {self.strategy.position.ticket} on {self.symbol} closed by broker")
                     self.strategy.position = None
                     self.state.next()
 
@@ -109,7 +113,8 @@ class SingleTraderBot:
 
                 if self.state.is_exit(exit_signal):
                     self.broker.close_position(self.strategy.position)
-                    logger.info(f"position {self.strategy.position.ticket} on {self.symbol} closed by bot")
+                    logger.info(
+                        f"position {self.strategy.position.ticket} on {self.symbol} closed by bot")
                     self.strategy.position = None
                     self.state.next()
 
@@ -131,7 +136,7 @@ if __name__ == "__main__":
     symbol = "EURUSD"
 
     # Login on a broker session
-    broker = BrokerSession()
+    broker = Mt5Session()
     broker.start_session(login_settings["mt5_login"])
     broker.enable_symbols([symbol])
 
