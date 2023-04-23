@@ -6,7 +6,7 @@ from pandas import Series
 from sklearn.preprocessing import minmax_scale
 
 from talib.abstract import Function
-from talib import EMA, SMA, CCI, ADX, RSI
+from talib import EMA, SMA, CCI, ADX, RSI, MAX, MIN
 from talib import get_functions, set_unstable_period
 
 __unstable_indicators__ = [
@@ -79,6 +79,8 @@ __new_indicators__ = [
     "RQK",
     "RBFK"
 ]
+
+CandleLike = Union[Series, np.recarray]
 
 
 def get_all_indicators():
@@ -157,10 +159,10 @@ def get_lorentzian_distance(x1: np.ndarray, x2: np.ndarray) -> float:
 
 
 def normalize(
-    data: Union[Series, np.recarray],
+    data: CandleLike,
     xrange: tuple[float, float] = (0, 1),
     method: str = "minmax_scale"
-) -> Union[Series, np.recarray]:
+) -> CandleLike:
     if method == "range_scale":
         return (data - xrange[0]) / (xrange[1] - xrange[0])
     elif method == "minmax_scale":
@@ -168,10 +170,10 @@ def normalize(
 
 
 def smooth(
-    data: Union[Series, np.recarray],
+    data: CandleLike,
     window_smooth: int = 2,
     method: str = "EMA",
-) -> Union[Series, np.recarray]:
+) -> CandleLike:
     if window_smooth < 1:
         raise ValueError(f"{window_smooth=} should be greater than 0")
     elif window_smooth == 1:
@@ -230,22 +232,50 @@ def get_stable_min_bars(indicator: str, window: int) -> int:
             f"{indicator=} has no formula to get stable values")
 
 
-def HL2(high: Series, low: Series) -> Series:
+
+def HL2(high: CandleLike, low: CandleLike) -> CandleLike:
     return (high + low) / 2.
 
 
-def HLC3(high: Series, low: Series, close: Series) -> Series:
+def HLC3(
+    high: CandleLike, 
+    low: CandleLike, 
+    close: CandleLike
+) -> CandleLike:
     return (high + low + close) / 3.
 
 
-def OHLC4(open: Series, high: Series, low: Series, close: Series) -> Series:
-    return (open + high + low + close) / 4.
+def OHLC4(
+    open: CandleLike, 
+    high: CandleLike, 
+    low: CandleLike, 
+    close: CandleLike,
+) -> CandleLike:
+    return (open + high + low + close) / 4
 
+def DONCHAIN(ohlc: CandleLike, window: int = 20) -> CandleLike:
+    """Donchian Channel.
+
+    Args:
+        ohlc (CandleLike): Any candle data like open, high, low & close prices
+        window (int, optional): Lookback window to . Defaults to 20.
+
+    Returns:
+        CandleLike: _description_
+    """
+    upper = MAX(ohlc, window)
+    lower = MIN(ohlc, window)
+    donchain = np.rec.fromarrays(
+        [upper, lower], 
+        names=["donchain_upper", "donchain_lower"], 
+        formats=["<f8", "<f8"]
+    )
+    return donchain
 
 def WT(
-    high: Union[Series, np.recarray],
-    low: Union[Series, np.recarray],
-    close: Union[Series, np.recarray],
+    high: CandleLike,
+    low: CandleLike,
+    close: CandleLike,
     window: int = 10,
     window_smooth: int = 11,
 ) -> Series:
