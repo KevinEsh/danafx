@@ -1,4 +1,4 @@
-from trade.indicators2 import get_signal_labels, HLC3
+from trade.indicators import HLC3
 
 
 # def signal_correction(data: list[float], signals: list[int]) -> pd.Series:
