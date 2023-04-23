@@ -1,7 +1,7 @@
 from sklearn.preprocessing import minmax_scale
 from talib import EMA, SMA
 
-from trade.indicators2.metadata import CandleLike
+from trade.metadata import CandleLike
 
 
 def normalize(
