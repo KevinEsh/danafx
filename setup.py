@@ -1,4 +1,4 @@
-from trade.indicators import get_signal_labels, HLC3
+from trade.indicators2 import get_signal_labels, HLC3
 
 
 # def signal_correction(data: list[float], signals: list[int]) -> pd.Series:
@@ -46,7 +46,8 @@ if __name__ == '__main__':
     df_rates["hlc3"] = HLC3(df_rates.high, df_rates.low, df_rates.close)
     df_rates["signal"] = get_signal_labels(df_rates["hlc3"], -4)
 
-    data = df_rates[["high", "low", "close"]].shift(-1, fill_value=1.0).values.reshape(-1, 3)
+    data = df_rates[["high", "low", "close"]
+                    ].shift(-1, fill_value=1.0).values.reshape(-1, 3)
     target = df_rates["close"]
 
     train_data = data[:-90, 1:]
