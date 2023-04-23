@@ -1,9 +1,3 @@
-from numpy import recarray, ndarray
-from typing import Union
-from pandas import Series
-
-CandleLike = Union[Series, recarray, ndarray]
-
 __unstable_indicators__ = [
     'HT_DCPERIOD',
     'HT_DCPHASE',

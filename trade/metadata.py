@@ -1,5 +1,10 @@
 import MetaTrader5 as mt5
 from enum import Enum
+from numpy import recarray, ndarray
+from typing import Union
+from pandas import Series
+
+CandleLike = Union[Series, recarray, ndarray]
 
 
 class AssetState(Enum):
@@ -54,7 +59,8 @@ class OrderTypes(Enum):
     BUY_STOP_LIMIT = mt5.ORDER_TYPE_BUY_STOP_LIMIT
     # Upon reaching the order price a pending Sell Limit order is placed at the StopLimit price
     SELL_STOP_LIMIT = mt5.ORDER_TYPE_SELL_STOP_LIMIT
-    CLOSE_BY = mt5.ORDER_TYPE_CLOSE_BY      # Order to close a position by an opposite one
+    # Order to close a position by an opposite one
+    CLOSE_BY = mt5.ORDER_TYPE_CLOSE_BY
 
 
 class InverseOrderTypes(Enum):
