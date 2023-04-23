@@ -1,9 +1,6 @@
 
-from pandas import Series
-from metadata import __new_indicators__, __unstable_indicators__
-
-from talib.abstract import Function
 from talib import get_functions
+from metadata import __new_indicators__, __unstable_indicators__
 
 
 def get_all_indicators():
