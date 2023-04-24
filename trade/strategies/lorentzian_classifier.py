@@ -67,7 +67,8 @@ class LorentzianClassifier:
         i1, i2 = x1[0], x2[0]  # get the chronological index of both points
         is_not_in_window = (i1 <= i2) or (i1 > i2 + self._lookback_window)
         # TODO: cambiar esta cosa por 4 velas atras de i2 (experimentar)
-        skip_neighbor = i1 % self._neighbors_leap  # (i1 - i2) % self._neighbors_leap
+        # (i1 - i2) % self._neighbors_leap
+        skip_neighbor = i1 % self._neighbors_leap
         if skip_neighbor or is_not_in_window:
             # print(i1, i2, np.inf)
             return np.inf
@@ -80,7 +81,8 @@ class LorentzianClassifier:
         distances[is_inf] = 0
 
         # normalize weigths using their distance. Further points will have less impact
-        elongated_distances = distances**3  # TODO: tener este parametro para modificaciones
+        # TODO: tener este parametro para modificaciones
+        elongated_distances = distances**3
         sum_weighted = np.sum(elongated_distances, axis=1, keepdims=True)
         new_weights = np.divide(
             elongated_distances,
@@ -94,10 +96,11 @@ class LorentzianClassifier:
 if __name__ == "__main__":
     # import pandas as pd
     from setup import get_settings
-    from trade.broker import TraderBot
+    from trade.brokers.mt5broker import TraderBot
     # from matplotlib.pyplot import plot, savefig
 
-    strategy_settings = get_settings("settings\demo\lorentzian_classifier.json")
+    strategy_settings = get_settings(
+        "settings\demo\lorentzian_classifier.json")
 
     # Import project settings
     login_settings = get_settings("settings/demo/login.json")

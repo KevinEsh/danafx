@@ -51,13 +51,14 @@ class GaussianStockRegressor:
 if __name__ == "__main__":
     import pickle
     import matplotlib.pyplot as plt
-    from preprocessing.preprocessing import preprocess_stock_data
+    from preputils.pipeflow import preprocess_stock_data
     from setup import get_settings
-    from trade.broker import BrokerSession
+    from trade.brokers.mt5broker import BrokerSession
     # from matplotlib.pyplot import plot, savefig
 
     # Import project settings
-    strategy_settings = get_settings("settings\demo\lorentzian_classifier.json")
+    strategy_settings = get_settings(
+        "settings\demo\lorentzian_classifier.json")
     login_settings = get_settings("settings/demo/login.json")
     # trading_settings = get_settings("settings/demo/trading.json")
     mt5_login_settings = login_settings["mt5_login"]
@@ -101,9 +102,12 @@ if __name__ == "__main__":
     # y_pred, std = gp.predict(test_data, return_std=True)
 
     # Visualize the results
-    plt.plot(range(0, data.shape[0])[6000:], data[6000:], color='black', label='Data', alpha=0.4)
-    plt.plot(range(0, data.shape[0])[6000:], pred_rbf[6000:], color='blue', label='Pred', alpha=0.4)
-    plt.plot(range(0, data.shape[0])[6000:], pred_rq[6000:], color='red', label='Pred', alpha=0.4)
+    plt.plot(range(0, data.shape[0])[6000:], data[6000:],
+             color='black', label='Data', alpha=0.4)
+    plt.plot(range(0, data.shape[0])[
+             6000:], pred_rbf[6000:], color='blue', label='Pred', alpha=0.4)
+    plt.plot(range(0, data.shape[0])[
+             6000:], pred_rq[6000:], color='red', label='Pred', alpha=0.4)
     # # plt.plot(data[100:, 0], y_pred, color='blue', label='Prediction RQ')
     # # plt.plot(test_data, y_pred2, color='red', label='Prediction RBF')
     # # plt.fill_between(test_data[:, 0].ravel(), y_pred - std, y_pred + std, alpha=0.1, color='blue')
