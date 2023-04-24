@@ -1,29 +1,29 @@
-from trade.strategies.abstract import Hyperparameter, TradingStrategy, OHLCbounds
 from numpy import recarray, append, sqrt
 
-from talib import RSI
+from trade.strategies.abstract import Hyperparameter, TradingStrategy, OHLCbounds
+from trade.indicators import RSI, get_stable_min_bars
 
 # Stream indicators. Only returns last value
 # from talib.stream import RSI as _RSI
 
 
-class TriggerBandMechanism():
+# class TriggerBandMechanism():
 
-    def __init__(self, bands: list[tuple], signals: tuple[int]) -> None:
-        self.n_bands = len(bands)
-        self.bands = bands
-        self.signals = signals
-        self.was_on_band = [False for _ in range(self.n_bands)]
+#     def __init__(self, bands: list[tuple], signals: tuple[int]) -> None:
+#         self.n_bands = len(bands)
+#         self.bands = bands
+#         self.signals = signals
+#         self.was_on_band = [False for _ in range(self.n_bands)]
 
-    def __call__(self, value: float) -> bool:
-        for i in range(self.n_bands):
-            if is_on_band(value, self.bands[i]):
-                if not self.was_on_band[i]:
-                    self.was_on_band[i] = True
-            elif self.was_on_band[i]:
-                self.was_on_band[i] = False
-                return self.signals[i]
-        return -1  # Neutral signal until value is out of any band
+#     def __call__(self, value: float) -> bool:
+#         for i in range(self.n_bands):
+#             if is_on_band(value, self.bands[i]):
+#                 if not self.was_on_band[i]:
+#                     self.was_on_band[i] = True
+#             elif self.was_on_band[i]:
+#                 self.was_on_band[i] = False
+#                 return self.signals[i]
+#         return -1  # Neutral signal until value is out of any band
 
 
 def is_on_band(value: float, band: tuple[float]):
@@ -55,7 +55,7 @@ class RsiStrategy(TradingStrategy):
         self.config_sell_band._check_bounds(sell_band, init=True)
         self.config_source._check_bounds(source, init=True)
         self.config_lookback._check_bounds(lookback, init=True)
-        self.config_hold_mode._check_bounds(mode, init=True)
+        self.config_mode._check_bounds(mode, init=True)
 
         # fill user values
         self._window = window
@@ -66,7 +66,7 @@ class RsiStrategy(TradingStrategy):
         self._mode = mode
 
         # calcualte an estimate of bars needed to get a good rsi approximation
-        self.min_bars = int(sqrt(840 * window - 1400))  # based on experiments
+        self.min_bars = get_stable_min_bars("RSI", window) + lookback
 
     @property
     def window(self):
@@ -105,38 +105,43 @@ class RsiStrategy(TradingStrategy):
         self._source = source
 
     @property
-    def hold_mode(self):
-        return self._hold_mode
+    def mode(self):
+        return self._mode
 
-    @hold_mode.setter
-    def hold_mode(self, hold_mode):
-        self.config_hold_mode._check_bounds(hold_mode)
-        self._hold_mode = hold_mode
+    @mode.setter
+    def mode(self, mode):
+        self.config_mode._check_bounds(mode)
+        self._mode = mode
 
-    def fit(self, train_data: recarray):
-        super().fit(train_data)
-        self._last_bars = self.train_data[self._source][-self.min_bars:]
+    def fit(self, train_data: recarray, train_labels: recarray = None):
+        if not self.compound_mode:
+            super().fit(train_data, train_labels)
+        # Select optimal batch
+        self._batch = self.train_data[self._source][-self.min_bars:]
 
     def update_data(self, new_data: recarray) -> None:
-        super().update_data(new_data)
-        self._last_bars = self.train_data[self._source][-self.min_bars:]
+        if not self.compound_mode:
+            super().update_data(new_data)
+        # Select optimal batch
+        self._batch = self.train_data[self._source][-self.min_bars:]
 
-    def generate_entry_signal(self, datum: recarray) -> int:
+    def generate_entry_signal(self, candle: recarray) -> int:
         # Calculate RSI for current candle
-        batch = append(self._last_bars, datum.close)
+        batch = append(self._batch, candle.close)
         rsis = RSI(batch, self._window)
         rsi = rsis[-1+self._lookback]
 
         if self._mode == "outband":
             prev_rsi = rsis[-2+self._lookback]
-            # print(f"{prev_rsi=:.2f} {rsi=:.2f}")
+            print(f"{prev_rsi=:.2f} {rsi=:.2f}")
             if is_on_band(prev_rsi, self._buy_band) and not is_on_band(rsi, self._buy_band):
                 return 0  # buy
             elif is_on_band(prev_rsi, self._sell_band) and not is_on_band(rsi, self._sell_band):
                 return 1  # sell
             else:
                 return -1  # neutral
-        if self._mode == "inband":
+
+        elif self._mode == "inband":
             prev_rsi = rsis[-2+self._lookback]
             # print(f"{prev_rsi=:.2f} {rsi=:.2f}")
             if not is_on_band(prev_rsi, self._buy_band) and is_on_band(rsi, self._buy_band):
@@ -145,6 +150,7 @@ class RsiStrategy(TradingStrategy):
                 return 1  # sell
             else:
                 return -1  # neutral
+
         elif self._mode == "onband":
             # Return signal only if last rsi touches sell/buy bands
             if is_on_band(rsi, self._buy_band):
