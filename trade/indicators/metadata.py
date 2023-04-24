@@ -60,7 +60,7 @@ __linear_indicators__ = [
     "OHLC4",
 ]
 
-__new_indicators__ = [
+__custom_indicators__ = [
     "HL2",
     "HLC3",
     "OHLC4",

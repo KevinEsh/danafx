@@ -1,6 +1,6 @@
 
 from talib import get_functions
-from metadata import __new_indicators__, __unstable_indicators__
+from metadata import __custom_indicators__, __unstable_indicators__
 
 
 def get_all_indicators():
@@ -11,7 +11,7 @@ def get_all_indicators():
         and additional custom indicators.
     """
     talib_indicators = get_functions()
-    talib_indicators.extend(__new_indicators__)
+    talib_indicators.extend(__custom_indicators__)
     return talib_indicators
 
 
@@ -79,26 +79,8 @@ def get_stable_min_bars(indicator: str, window: int) -> int:
             f"{indicator=} has no formula to get stable values")
 
 
-def ema_trend(close: Series, ema: Series) -> Series:
-    return close > ema
-
-
-def sma_trend(close: Series, sma: Series) -> Series:
-    return close > sma
-
-
-def get_signal_labels(source: Series, window: int = -4) -> Series:
-    shifted = source.shift(window)  # move the window to the future
-    shifted[window:] = source[window:]  # fill nan values with their present
-    # 1 if current price is lower than future
-    uptrend = (shifted > source).astype(float)
-    # -1 if current price is greater than future
-    downtrend = (shifted < source).astype(float)
-    return uptrend - downtrend
-
-
 if __name__ == "__main__":
-    from trade.broker import BrokerSession
+    from trade.brokers import Mt5Session
     from matplotlib.pyplot import plot, savefig
     from setup import get_settings
 
@@ -107,7 +89,7 @@ if __name__ == "__main__":
     # trading_settings = get_settings("settings/demo/trading.json")
     mt5_login_settings = login_settings["mt5_login"]
 
-    trader = BrokerSession()
+    trader = Mt5Session()
     trader.start_session(mt5_login_settings)
     trader.initialize_symbols(["EURUSD"])
     df = trader.query_historic_data("EURUSD", "M30", 2000)
