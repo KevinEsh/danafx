@@ -126,7 +126,7 @@ class SingleTraderBot:
 
 
 if __name__ == "__main__":
-    from setup import get_settings
+    from utils.config import get_settings
     # from trade.strategies.trending import DualMavStrategy
     from trade.strategies.momentum import RsiStrategy
 
@@ -143,7 +143,7 @@ if __name__ == "__main__":
     # Select strategy
     # strategy = DualMavStrategy(5, 200, neutral_band=(-0.0004, 0.0004), inverse=True)
     # strategy = DualRmaStrategy(5, 200, neutral_band=(-0.0004, 0.0004), inverse=True)
-    strategy = RsiStrategy(14, (0, 23), (70, 100), hold_mode=True)
+    strategy = RsiStrategy(14, (0, 23), (70, 100), mode="outband")
 
     risk_params = {
         "pips": 5,
@@ -151,7 +151,7 @@ if __name__ == "__main__":
         "rr_ratio": 1.5,
     }
 
-    trader = SingleTraderBot(symbol, "M1", 5, risk_params)
+    trader = SingleTraderBot(symbol, "M1", risk_params, 5)
     trader.set_broker(broker)
     trader.set_strategy(strategy)
 
