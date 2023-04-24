@@ -1,6 +1,6 @@
 
 from talib import get_functions
-from metadata import __custom_indicators__, __unstable_indicators__
+from trade.indicators.metadata import __custom_indicators__, __unstable_indicators__
 
 
 def get_all_indicators():

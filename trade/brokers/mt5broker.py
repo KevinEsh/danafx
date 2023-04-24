@@ -5,7 +5,7 @@ from datetime import datetime
 from dataclasses import dataclass
 from pandas import DataFrame, to_datetime
 
-from abstract import BrokerSession
+from trade.brokers.abstract import BrokerSession
 from trade.metadata import OrderTypes, TimeFrames, InverseOrderTypes
 
 
