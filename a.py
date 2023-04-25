@@ -14,10 +14,11 @@ from pandas import read_csv
 from yfinance import download
 from datetime import datetime as dt
 import pytz
+from numpy import gradient
 
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from trade.indicators import RSI, get_stable_min_bars, set_unstable_period
+from trade.indicators import RSI, EMA, SMA, get_stable_min_bars, set_unstable_period
 
 symbols = ["EURUSD"]
 # tz = pytz.timezone("US/Central")
@@ -32,8 +33,8 @@ df = read_csv("data/raw/eurusd_365.csv", index_col="time")
 
 rsi = RSI(df.close, 10)
 bars = get_stable_min_bars("RSI", 10)
-set_unstable_period("RSI", bars - 10 + 1)
-rsi2 = RSI(df.close, 10)
+# set_unstable_period("RSI", bars - 10 + 1)
+rsi2 = gradient(EMA(RSI(df.close, 10), 10), 2) * 10
 
 x = df.index[50:60]
 y = df.close[50:60]
@@ -156,7 +157,7 @@ fig_indic.add_trace(
 fig_indic.update_yaxes(
     side="right",
     ticklabelposition="outside right",
-    fixedrange=True,
+    # fixedrange=True,
     range=(0, 100),
 )
 fig_indic.update_layout(
