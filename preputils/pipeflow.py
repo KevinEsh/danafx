@@ -1,4 +1,43 @@
 
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+import numpy as np
+from preputils.transform import Smoother, RangeScaler
+
+
+def build_pipeline(config_data):
+    for col_name, config in config_data.items():
+        trans = config.get("transform")
+        if not trans:
+            continue
+        transformers = []
+        for action, params in trans.items():
+            if action == "scaled":
+                t = (f"{col_name}_{action}", Scaler(**params), col_name) #TODO
+            elif action == "smoother":
+                t = (f"{col_name}_{action}", Smoother(**params), col_name)
+            elif action == "fillna":
+                t = (f"{col_name}_{action}", Filler(**params), col_name) #TODO
+            transformers.append(t)
+
+    return ColumnTransformer(transformers)
+
+# Define the columns and their corresponding transformers
+column_transformer = ColumnTransformer(
+    transformers=[
+        ("smooth_ema_3", Smoother(**params), ["col1", "col2"]),
+        ("smooth_sma_2", Smoother(**params), ["col1", "col2"]),
+        ("range_scaler", RangeScaler(**params))
+        ('standard_scaler_1', StandardScaler(**params), ['col1']), # Normalize col1 using StandardScaler
+        ('minmax_scaler_1', MinMaxScaler(**params), ['col2']), # Normalize col2 using MinMaxScaler
+    ])
+
+# Apply the transformations to the columns of interest
+columns_to_transform = ['col1', 'col2']
+data[columns_to_transform] = column_transformer.fit_transform(data[columns_to_transform])
+
+
+
 
 # def get_lorentzian_distance(x1: ndarray, x2: ndarray) -> float:
 #     return np.sum(np.log(1 + np.abs(x1 - x2)))
