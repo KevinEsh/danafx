@@ -1,28 +1,47 @@
+from numpy import recarray, append, sqrt
 from sklearn.neighbors import KNeighborsClassifier
-import numpy as np
-from enum import Enum
-from typing import Any
 
+from trade.strategies.abstract import Hyperparameter, TradingStrategy, OHLCbounds
+from trade.indicators import RSI, ADX, CCI, WT, get_stable_min_bars #TODO: mover estos indicadores a una funcion que solo te los calcule (pipeline) y te los agregue a tu train_data
 
-class LorentzianClassifier:
+IndicatorBounds = ["RSI", "ADX", "CCI", "WT"]
+
+class LorentzianClassifierStrategy(TradingStrategy):
     """This model specializes specifically in predicting the direction of price
     action over the course of the next 4 bars. To avoid complications with the
     ML model, this value is hardcoded to 4 bars but support for other training
     lengths may be added in the future.
     """
+    config_sources = Hyperparameter("sources", "structured", IndicatorBounds) #TODO: structured
+    config_window = Hyperparameter("window", "numeric", (2, 6000))
+    config_n_neighbors = Hyperparameter("n_neighbors", "numeric", (0, 100))
+    config_neighbors_leap = Hyperparameter("neighbors_leap", "interval", (0, 100))
+    config_n_jobs = Hyperparameter("n_jobs", "numeric", (1, 5))
 
     def __init__(
         self,
+        sources: list,
+        window: int = 2000,
         n_neighbors: int = 4,
-        lookback_window: int = 2000,
         neighbors_leap: int = 4,
         n_jobs: int = 1
     ) -> None:
+        super().__init__()
+        # Check if hyperparameters met the criteria
+        self.config_sources._check_bounds(sources, init=True)
+        self.config_window._check_bounds(window, init=True)
+        self.config_n_neighbors._check_bounds(n_neighbors, init=True)
+        self.config_neighbors_leap._check_bounds(neighbors_leap, init=True)
+        self.config_n_jobs._check_bounds(n_jobs, init=True)
+
         # define the number of neighbors to use
+        self._sources = sources
+        self._window = window
         self._n_neighbors = n_neighbors
-        self._lookback_window = lookback_window
         self._neighbors_leap = neighbors_leap
         self._n_jobs = n_jobs
+
+        self.min_bars = window
 
         # create the KNN classifier using the Lorentzian distance metric
         self.knn_classifier = KNeighborsClassifier(
@@ -33,14 +52,20 @@ class LorentzianClassifier:
             # metric_params={"lookback_window": 2000},
         )
 
-    def fit(self, train_data: Any, train_target: Any) -> None:
+    def fit(self, train_data: recarray, train_target: recarray):
         # fit the model
+
+        for name, specs in self._sources:
+            values = pipeline(train_data, specs)
+            values = copy_fromat(values, train_data, name)
+            append(train_data, )
         self._train_data = train_data
         self._train_target = train_target
-        # self.knn_classifier.fit(self._train_data, self._train_target)
+        
+        self.knn_classifier.fit(self._train_data, self._train_target)
 
-    def predict(self, data: Any) -> Any:
-        return self.knn_classifier.predict(data)
+    def generate_entry_signal(self, candle: recarray) -> int:
+        return self.knn_classifier.predict(data) # TODO
 
     def predict2(self, data: Any) -> Any:
         predictions = np.full(data.shape[0], 0)
@@ -56,7 +81,7 @@ class LorentzianClassifier:
                 if largest_distance:
                     pass  # TODO
 
-    def update(self, new_data: Any) -> None:
+    def update_data(self, new_data: Any) -> None:
         # TODO: modificar esta funcion para poder actualizar los datos de entrenamiento cada cierto tiempo/iteraciones
         raise NotImplemented
 
