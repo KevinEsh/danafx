@@ -21,20 +21,21 @@ from plotly.subplots import make_subplots
 from trade.indicators import RSI, EMA, SMA, get_stable_min_bars, set_unstable_period
 
 symbols = ["EURUSD"]
-# tz = pytz.timezone("US/Central")
-# start = tz.localize(dt(2023, 4, 1))
-# end = tz.localize(dt.today())
 
+# tz = pytz.timezone("US/Central")
+# start = tz.localize(dt(2023, 1, 1))
+# end = tz.localize(dt.today())
 # df = broker.get_candles(symbol, "M1", 100, as_dataframe=True, format_time=True)
-df = read_csv("data/raw/eurusd_365.csv", index_col="time")
 # df = download("EURUSD=X", start, end, interval="1h", auto_adjust=True)
 # df.rename(columns={C:C.lower() for C in df.columns}, inplace=True)
-# df.to_csv("data/raw/eurusd_2.csv")
+# df.to_csv("data/raw/eurusd_1000.csv")
 
-rsi = RSI(df.close, 10)
-bars = get_stable_min_bars("RSI", 10)
+df = read_csv("data/raw/eurusd_2000.csv", index_col="time")
+
+rsi = RSI(df.close, 14)
+bars = get_stable_min_bars("RSI", 14)
 # set_unstable_period("RSI", bars - 10 + 1)
-rsi2 = gradient(EMA(RSI(df.close, 10), 10), 2) * 10
+rsi2 = gradient(SMA(RSI(df.close, 14), 5), 2) * 10
 
 x = df.index[50:60]
 y = df.close[50:60]
@@ -184,15 +185,15 @@ app.layout = html.Div([
         style={'width': '15%', 'display': 'inline-block'}
     ),
     dcc.Graph(id='candlestick-graph'),
+    dcc.Slider(
+        0,
+        100,
+        step=10,
+        value=100,
+        marks={str(pct): str(pct) for pct in range(0, 110, 10)},
+        id='year-slider'
+    ),
     dcc.Graph(id='indicators-graph'),
-    # dcc.Slider(
-    #     df['year'].min(),
-    #     df['year'].max(),
-    #     step=None,
-    #     value=df['year'].min(),
-    #     marks={str(year): str(year) for year in df['year'].unique()},
-    #     id='year-slider'
-    # )
 ])
 
 
