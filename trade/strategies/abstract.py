@@ -196,6 +196,66 @@ class TradingStrategy:
         return f"{self.__class__.__name__}({str_params})"
 
 
+class EntryTradingStrategy(TradingStrategy):
+    def __init__(self):
+        super().__init__()
+
+    def generate_entry_signal(self, candle: recarray):
+        # Define your entry signal generation logic on this method
+        return EntrySignal.NEUTRAL.value  # return neutral by default
+
+    def validate_entry_signal(self, entry_signal: int):
+        # Define your entry signal validation logic on this method
+        if entry_signal not in EntrySignal._value2member_map_:
+            raise ValueError(f"{entry_signal=} not recognized")
+
+    def get_entry_signal(self, candle: recarray):
+        # Generate new signal and append it to the last signals queue.
+        entry_signal = self.generate_entry_signal(candle)
+        self.validate_entry_signal(entry_signal)
+
+        self.last_entry_signals.append(entry_signal)
+        self.last_entry_signals.pop(0)
+
+        # If last signals in queue are all the same, return equivalent trade signal.
+        # If not, return neutral signal
+        if all(signal == EntrySignal.BUY.value for signal in self.last_entry_signals):
+            return EntrySignal.BUY
+
+        elif all(signal == EntrySignal.SELL.value for signal in self.last_entry_signals):
+            return EntrySignal.SELL
+
+        return EntrySignal.NEUTRAL
+
+
+class ExitTradingStrategy(TradingStrategy):
+    def __init__(self):
+        super().__init__()
+
+    def generate_exit_signal(self, candle: recarray):
+        # Define your entry signal generation logic on this method
+        return ExitSignal.HOLD.value  # return hold signal by default
+
+    def validate_exit_signal(self, exit_signal: int):
+        # Define your exit signal validation logic on this method
+        if exit_signal not in ExitSignal._value2member_map_:
+            raise ValueError(f"{exit_signal=} not recognized")
+
+    def get_exit_signal(self, candle: recarray):
+        # Generate new signal and append it to the last signals queue.
+        exit_signal = self.generate_exit_signal(candle)
+        self.validate_exit_signal(exit_signal)
+
+        self.last_exit_signals.append(exit_signal)
+        self.last_exit_signals.pop(0)
+
+        # If last signals in queue are all the same, return equivalent trade signal.
+        # If not, return neutral signal
+        if all(signal == ExitSignal.EXIT.value for signal in self.last_exit_signals):
+            return ExitSignal.EXIT
+        return ExitSignal.HOLD
+
+
 class CompoundTradingStrategy(TradingStrategy):
     """A trading strategy that combines multiple entry strategies and optionally, exit strategies.
 
