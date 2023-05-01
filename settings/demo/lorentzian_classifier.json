@@ -1,55 +1,98 @@
 {
   "init": {
     "n_neighbors": 15,
-    "lookback_window": 2000,
-    "neighbors_leap": 3,
-    "n_jobs": 3
+    "window": 2000,
+    "neighbors_leap": 4,
+    "n_jobs": 2
   },
   "source_data": {
-    "index": {
-      "type": "Index"
-    },
     "rsi14": {
-      "indicator": "RSI",
+      "function": "RSI",
       "parameters": {
-        "window": 14,
-        "window_smooth": 1,
-        "rescaled": "range_scale",
+        "source": "close",
+        "window": 14
+      },
+      "transform": {
+        "rescaled": {
+          "method": "range_scale",
+          "feature_range": [0, 100]
+        },
+        "smoothed":{
+          "method": "SMA",
+          "window": 1
+        },
         "fillna": false
       }
     },
     "rsi9": {
-      "indicator": "RSI",
+      "function": "RSI",
       "parameters": {
-        "window": 9,
-        "window_smooth": 1,
-        "rescaled": "range_scale",
+        "source": "close",
+        "window": 9
+      },
+      "transform": {
+        "rescaled": {
+          "method": "range_scale",
+          "feature_range": [0, 100]
+        },
+        "smoothed":{
+          "method": "SMA",
+          "window": 1
+        },
         "fillna": false
       }
     },
-    "wt": {
-      "indicator": "WT",
+    "wt10": {
+      "function": "WT",
       "parameters": {
         "window": 10,
-        "window_smooth": 11,
-        "rescaled": "minmax_scale",
+        "window_smooth": 11
+      },
+      "transform":{
+        "rescaled": {
+          "method": "minmax_scale",
+          "feature_range": [0, 1]
+        },
+        "smoothed":{
+          "method": "SMA",
+          "window": 1
+        },
         "fillna": false
       }
     },
-    "cci": {
-      "indicator": "CCI",
+    "cci20": {
+      "function": "CCI",
       "parameters": {
-        "window": 20,
-        "window_smooth": 1,
-        "rescaled": "minmax_scale",
+        "window": 20
+      },
+      "transform":{
+        "rescaled": {
+          "method": "minmax_scale",
+          "feature_range": [0, 1]
+        },
+        "smoothed":{
+          "method": "SMA",
+          "window": 1
+        },
         "fillna": false
       }
     },
-    "adx": {
-      "indicator": "ADX",
+    "adx20": {
+      "function": "ADX",
       "parameters": {
         "window": 20,
         "rescaled": "range_scale",
+        "fillna": false
+      },
+      "transform":{
+        "rescaled": {
+          "method": "minmax_scale",
+          "feature_range": [0, 1]
+        },
+        "smoothed":{
+          "method": "SMA",
+          "window": 1
+        },
         "fillna": false
       }
     }
