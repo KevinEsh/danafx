@@ -27,7 +27,7 @@ __unstable_indicators__ = [
     "RBFK",
 ]
 
-__linear_indicators__ = [
+__unrolling_indicators__ = [
     'MAX',
     'MIN',
     'MINMAX',
@@ -66,5 +66,8 @@ __custom_indicators__ = [
     "OHLC4",
     "WT",
     "RQK",
-    "RBFK"
+    "RBFK",
+    "DONCHAIN",
+    "PIVOTHIGH",
+    "PIVOTLOW",
 ]
