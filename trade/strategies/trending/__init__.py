@@ -1,0 +1,1 @@
+from trade.strategies.trending.breakline import TrendlineBreakStrategy
