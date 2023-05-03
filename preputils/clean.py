@@ -1,28 +1,29 @@
 from pandas import Series
-from trade.metadata import CandleLike
-from numpy import recarray, ndarray
-from numpy.lib.recfunctions import merge_arrays
-from numpy.core.records import fromarrays
+from numpy import recarray, ndarray, nan
+from numpy.core.records import fromarrays as asrecarray
+from numpy.lib.recfunctions import merge_arrays, stack_arrays
 
-def copy_format(data: CandleLike, from_data: CandleLike, names: list[str]) -> CandleLike:
+
+def copy_format(data: ndarray, from_data: recarray, names: list[str]) -> recarray:
     # Create a new object with the same type as the input
     # TODO: checar si funciona esto
-    data_like = type(from_data)(data)
-    if isinstance(data_like, Series):
+    if isinstance(from_data, Series):
+        data_like = Series(data)
         data_like.name = names
         data_like.index = from_data.index
     else:
-        data_like = as_recarray(data, names=names)
+        data_like = asrecarray(data, names=names)
     return data_like
 
-def as_recarray(arrays: list[ndarray], names: list[str]) -> recarray:
-    return fromarrays(arrays, names=names)
-
 def concat_recarrays(
-    arr1: recarray, 
-    arr2: recarray, 
+    arr1: recarray,
+    arr2: recarray,
 ) -> recarray:
-    return merge_arrays((arr1, arr2), asrecarray=True, flatten=True)
+    return merge_arrays(
+        (arr1, arr2),
+        fill_value=nan,
+        asrecarray=True, 
+        flatten=True)
 
     # Create a new recarray with an additional field
     # out_dtypes = arr1.dtype.descr + arr2.dtype.descr #new_dtypes #[('field3', '<i8')]
