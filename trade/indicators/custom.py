@@ -2,7 +2,7 @@ import numpy as np
 from talib import MAX, MIN, EMA, SMA
 
 from trade.metadata import CandleLike
-from preputils.clean import copy_format
+from preputils.clean import copy_format, asrecarray
 
 
 def HL2(
@@ -73,6 +73,46 @@ def OHLC4(
     """
     ohlc4 = (open + high + low + close) / 4.
     return ohlc4
+
+
+def PIVOTHIGH(
+    high: CandleLike,
+    left: int,
+    right: int,
+    as_recarray: bool = False
+) -> np.ndarray:
+    """
+    Calculates the pivot highs in an array of high values using the left and right periods.
+
+    Args:
+        high (CandleLike): Array of high values.
+        left (int): Number of periods to look back for pivot high.
+        right (int): Number of periods to look forward for pivot high.
+
+    Returns:
+        np.ndarray: Array of pivot high values with NaN values for non-pivot highs.
+    """
+    pivots = np.roll(MAX(high, left + 1 + right), -right)
+    pivots[pivots != high] = np.NaN
+    if as_recarray:
+        pivots = asrecarray(pivots, names=[f"pivothigh{left}_{right}"])
+    return pivots
+
+def PIVOTLOW(low: np.ndarray, left: int, right: int) -> np.ndarray:
+    """
+    Calculates the pivot lows in an array of low values using the left and right periods.
+
+    Args:
+        low (np.ndarray): Array of low values.
+        left (int): Number of periods to look back for pivot low.
+        right (int): Number of periods to look forward for pivot low.
+
+    Returns:
+        np.ndarray: Array of pivot low values with NaN values for non-pivot lows.
+    """
+    pivots = np.roll(MIN(low, left + 1 + right), -right)
+    pivots[pivots != low] = np.NaN
+    return pivots
 
 
 def DONCHAIN(
