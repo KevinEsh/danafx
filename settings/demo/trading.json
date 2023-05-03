@@ -1,4 +1,7 @@
 {
+  "entry_strategies": {},
+  "trailing_strategy": {},
+  "exit_strategies": {},
   "live_trading": {
     "active_upto": "2022-11-01",
     "active_time": 10,
