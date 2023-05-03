@@ -230,15 +230,15 @@ Use this space to list resources you find helpful and would like to give credit 
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/KevinEsh/danafx.svg?style=for-the-badge
+[contributors-shield]: https://img.shields.io/github/contributors/KevinEsh/danafx.svg?style=?style=flat
 [contributors-url]: https://github.com/KevinEsh/danafx/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/KevinEsh/danafx.svg?style=for-the-badge
+[forks-shield]: https://img.shields.io/github/forks/KevinEsh/danafx.svg?style=?style=flat
 [forks-url]: https://github.com/KevinEsh/danafx/network/members
-[stars-shield]: https://img.shields.io/github/stars/KevinEsh/danafx.svg?style=for-the-badge
+[stars-shield]: https://img.shields.io/github/stars/KevinEsh/danafx.svg?style=?style=flat
 [stars-url]: https://github.com/KevinEsh/danafx/stargazers
-[issues-shield]: https://img.shields.io/github/issues/KevinEsh/danafx.svg?style=for-the-badge
+[issues-shield]: https://img.shields.io/github/issues/KevinEsh/danafx.svg?style=?style=flat
 [issues-url]: https://github.com/KevinEsh/danafx/issues
-[license-shield]: https://img.shields.io/github/license/KevinEsh/danafx.svg?style=for-the-badge
+[license-shield]: https://img.shields.io/github/license/KevinEsh/danafx.svg?style=?style=flat
 [license-url]: https://github.com/KevinEsh/danafx/blob/master/LICENSE.txt
 <!-- Dependencies -->
 [numpy]:
