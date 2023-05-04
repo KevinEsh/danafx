@@ -99,19 +99,19 @@ Use the `BLANK_README.md` to get started.
 
 This section should list any major frameworks/libraries used to bootstrap your project. Leave any add-ons/plugins for the acknowledgements section. Here are a few examples.
 
-<img alt="" src="https://img.shields.io/github/pipenv/locked/python-version/KevinEsh/danafx?color=blueviolet&style=flat-square"/>
-<img alt="" src="https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/scipy?color=pink&style=flat-square"/>
-<img alt="" src="https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/numpy?color=pink&style=flat-square"/>
-<img alt="" src="https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/yfinance?color=pink&style=flat-square"/>
-<img alt="" src="https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/pandas?color=pink&style=flat-square"/>
-<img alt="" src="https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/requests?color=pink&style=flat-square"/>
-<img alt="" src="https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/scipy?color=pink&style=flat-square"/>
-<img alt="" src="https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/metatrader5?color=pink&style=flat-square"/>
-<img alt="" src="https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/python-telegram-bot?color=pink&style=flat-square"/>
-<img alt="" src="https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/mplfinance?color=pink&style=flat-square"/>
-<img alt="" src="https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/scikit-learn?color=pink&style=flat-square"/>
-<img alt="" src="https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/ta-lib?color=pink&style=flat-square"/>
-<img alt="" src="https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/dev/plotly?color=pink&style=flat-square"/>
+minimal install
+
+![python][python-shield]
+
+![scipy][scipy-shield] ![numpy][numpy-shield] ![numba][numba-shield] ![pandas][pandas-shield] ![sklearn][sklearn-shield] ![metatrader5][mt5-shield] ![talib][talib-shield]
+
+dev extension
+
+![plotly][plotly-shield] ![dash][dash-shield]
+![yfinance][yfinance-shield]
+
+<img alt="" src="https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/yfinance?color=pink&style=flat"/>
+<img alt="" src="https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/python-telegram-bot?color=pink&style=flat"/>
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -241,4 +241,14 @@ Use this space to list resources you find helpful and would like to give credit 
 [license-shield]: https://img.shields.io/github/license/KevinEsh/danafx.svg?style=?style=flat
 [license-url]: https://github.com/KevinEsh/danafx/blob/master/LICENSE.txt
 <!-- Dependencies -->
-[numpy]:
+[python-shield]: https://img.shields.io/github/pipenv/locked/python-version/KevinEsh/danafx?color=blue&style=flat&logo=python
+[numpy-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/numpy?color=pink&style=flat&logo=numpy
+[numba-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/numba?color=pink&style=flat&logo=numba
+[scipy-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/scipy?color=pink&style=flat&logo=scipy
+[pandas-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/pandas?color=pink&style=flat&logo=pandas
+[sklearn-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/scikit-learn?color=pink&style=flat&logo=scikitlearn
+[mt5-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/metatrader5?color=pink&style=flat
+[talib-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/ta-lib?color=pink&style=flat
+[plotly-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/dev/plotly?color=pink&style=flat&logo=plotly
+[yfinance-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/dev/yfinance?color=pink&style=flat
+[dash-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/dev/dash?color=pink&style=flat&logo=dash
