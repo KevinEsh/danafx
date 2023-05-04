@@ -107,11 +107,7 @@ minimal install
 
 dev extension
 
-![plotly][plotly-shield] ![dash][dash-shield]
-![yfinance][yfinance-shield]
-
-<img alt="" src="https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/yfinance?color=pink&style=flat"/>
-<img alt="" src="https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/python-telegram-bot?color=pink&style=flat"/>
+![plotly][plotly-shield] ![dash][dash-shield] ![pytelegram][pytelegram-shield] ![yfinance][yfinance-shield]
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -242,13 +238,14 @@ Use this space to list resources you find helpful and would like to give credit 
 [license-url]: https://github.com/KevinEsh/danafx/blob/master/LICENSE.txt
 <!-- Dependencies -->
 [python-shield]: https://img.shields.io/github/pipenv/locked/python-version/KevinEsh/danafx?color=blue&style=flat&logo=python
-[numpy-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/numpy?color=pink&style=flat&logo=numpy
-[numba-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/numba?color=pink&style=flat&logo=numba
-[scipy-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/scipy?color=pink&style=flat&logo=scipy
-[pandas-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/pandas?color=pink&style=flat&logo=pandas
-[sklearn-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/scikit-learn?color=pink&style=flat&logo=scikitlearn
-[mt5-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/metatrader5?color=pink&style=flat
-[talib-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/ta-lib?color=pink&style=flat
-[plotly-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/dev/plotly?color=pink&style=flat&logo=plotly
-[yfinance-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/dev/yfinance?color=pink&style=flat
-[dash-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/dev/dash?color=pink&style=flat&logo=dash
+[numpy-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/numpy?color=CC99FF&style=flat&logo=numpy
+[numba-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/numba?color=CC99FF&style=flat&logo=numba
+[scipy-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/scipy?color=CC99FF&style=flat&logo=scipy
+[pandas-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/pandas?color=CC99FF&style=flat&logo=pandas
+[sklearn-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/scikit-learn?color=CC99FF&style=flat&logo=scikitlearn
+[mt5-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/metatrader5?color=CC99FF&style=flat&logo=monster
+[talib-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/ta-lib?color=CC99FF&style=flat&logo=alwaysdata
+[plotly-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/dev/plotly?color=CC99FF&style=flat&logo=plotly
+[yfinance-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/dev/yfinance?color=CC99FF&style=flat&logo=yahoo
+[dash-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/dev/dash?color=CC99FF&style=flat&logo=dash
+[pytelegram-shield]: https://img.shields.io/github/pipenv/locked/dependency-version/KevinEsh/danafx/dev/python-telegram-bot?color=CC99FF&style=flat&logo=telegram
