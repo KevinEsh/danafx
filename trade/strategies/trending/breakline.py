@@ -1,4 +1,5 @@
-from numpy import recarray, append, nanargmax, arange, isnan, all as npall
+from numpy import recarray, append, nanargmax, arange
+import numpy as np
 
 from trade.metadata import CandleLike
 from trade.strategies.abstract import Hyperparameter, TradingStrategy
@@ -27,30 +28,41 @@ from trade.indicators import PIVOTHIGH, PIVOTLOW
 #         return -1  # Neutral signal until value is out of any band
 
 
-def is_on_band(value: float, band: tuple[float]):
-    return band[0] <= value <= band[1]
+# def is_on_band(value: float, band: tuple[float]):
+#     return band[0] <= value <= band[1]
 
-def is_crossingover(candle: CandleLike, value: float) -> bool:
-    return candle.open < value < candle.close 
 
-def get_last_nonnan_index(data: recarray) -> float:
-    if npall(isnan(data)):
+def is_crossingover(
+    candle: CandleLike,
+    value: float,
+    offset: int = 0
+) -> bool:
+    return candle.open < value < candle.close
+
+
+def last_nonnan(arr):
+    """
+    Returns the index of the last non-nan value in the given array.
+    If all values are nan, returns None.
+    """
+    mask = np.isnan(arr)
+    if np.all(mask):
         return None
-    return data.shape[0] - nanargmax(data)
+    return np.max(np.where(~mask))
 
-def calculate_slope(
+
+def calc_slope(
     data: CandleLike,
-    bar_index: int, 
     window: int,
-    alpha:float,
+    alpha: float,
     method: str
 ) -> float:
-    s = data.shape[0]
-    slice_data = data[s - bar_index - window: s - bar_index + 1]
+    # s = data.shape[0]
+    # slice_data = data[s - bar_index - window: s - bar_index + 1]
 
-    h = slice_data.high
-    l = slice_data.low
-    c = slice_data.close
+    h = data.high
+    l = data.low
+    c = data.close
 
     if method == "atr":
         return ATR_(h, l, c, window) / (window * alpha)
@@ -58,7 +70,7 @@ def calculate_slope(
         return STDDEV_(c, window) / (window * alpha)
     elif method == "linreg":
         bar_indexes = arange(window)
-        return 2 * alpha * abs( (SMA_(c[-window:] * bar_indexes, window) - SMA_(c[-window:], window) * SMA_(bar_indexes, window)) / VAR_(bar_indexes, window) )
+        return 2 * alpha * abs((SMA_(c[-window:] * bar_indexes, window) - SMA_(c[-window:], window) * SMA_(bar_indexes, window)) / VAR_(bar_indexes, window))
 
 
 class TrendlineBreakStrategy(TradingStrategy):
@@ -66,12 +78,13 @@ class TrendlineBreakStrategy(TradingStrategy):
     config_alpha = Hyperparameter("alpha", "numeric", (1e-5, 1e5))
     config_offset = Hyperparameter("offset", "numeric", (-2, 0))
     # config_source = Hyperparameter("source", "categoric", OHLCbounds)
-    config_method = Hyperparameter("method", "categoric", ("atr", "stdev", "linreg"))
+    config_method = Hyperparameter(
+        "method", "categoric", ("atr", "stdev", "linreg"))
 
     def __init__(
         self,
         window: int,
-        alpha: float,
+        alpha: float = 1,
         offset: int = 0,
         # source: str = "close",
         method: str = "stdev",
@@ -91,6 +104,8 @@ class TrendlineBreakStrategy(TradingStrategy):
 
         # Estimate of bars needed to get a good approximation for pivots
         self.min_bars = 2 * window + 1
+        self._hp_bars = None
+        self._lp_bars = None
 
     @property
     def window(self):
@@ -133,65 +148,89 @@ class TrendlineBreakStrategy(TradingStrategy):
             super().fit(train_data, train_labels)
 
         # Get all high & low pivots from the whole timeseries
-        high_pivots = PIVOTHIGH(self.train_data.high, self._window, self._window)
-        low_pivots = PIVOTLOW(self.train_data.low, self._window, self._window)
+        high_pivots = PIVOTHIGH(self.train_data.high,
+                                self._window, self._window)
+        low_pivots = PIVOTLOW(self.train_data.low,
+                              self._window, self._window)
+        print(high_pivots)
+        print(low_pivots)
 
         # Just take into account the last pivots. Those will make the prediction
-        self._hp_index = get_last_nonnan_index(high_pivots)
-        self._lp_index = get_last_nonnan_index(low_pivots)
+        hp_index = last_nonnan(high_pivots)
+        lp_index = last_nonnan(low_pivots)
 
-        self._hp_value = high_pivots[-self._hp_index] if self._hp_index != None else None
-        self._lp_value = low_pivots[-self._lp_index] if self._lp_index != None else None
+        # Calculate line accourding to method selected by user
+        if hp_index is not None:
+            self._hp_value = high_pivots[hp_index]
+            hp_data = self.train_data[hp_index - self._window: hp_index + 1]
+            self._hp_slope = calc_slope(hp_data, self._window,
+                                        self._alpha, self._method)
+            self._hp_bars = self.train_data.shape[0] - hp_index
+            print(f"{self._hp_bars=}, {self._hp_value=}, {hp_index=}")
 
-        # Calculate slope accourding to method selected by user
-        self._hp_slope = calculate_slope(self.train_data, self._hp_index,
-                                         self._window, self._alpha, self._method)
-        self._lp_slope = calculate_slope(self.train_data, self._lp_index,
-                                         self._window, self._alpha, self._method)
+        if lp_index is not None:
+            self._lp_value = low_pivots[lp_index]
+            lp_data = self.train_data[lp_index - self._window: lp_index + 1]
+            self._lp_slope = calc_slope(lp_data, self._window,
+                                        self._alpha, self._method)
+            self._lp_bars = self.train_data.shape[0] - lp_index
+
+            print(f"{self._lp_bars=}, {self._lp_value=}, {lp_index=}")
 
     def update_data(self, new_data: recarray) -> None:
+        if not self.is_new_data(new_data):
+            return
+
         if not self.compound_mode:
             super().update_data(new_data)
         # Select minimal batch for predictions
         self._batch = self.train_data[-self.min_bars:]
-        
+
         # Get all high & low pivots from the whole timeseries
         high_pivots = PIVOTHIGH(self._batch.high, self._window, self._window)
         low_pivots = PIVOTLOW(self._batch.low, self._window, self._window)
 
         # Just take into account the last pivots. Those will make the prediction
-        new_hp_index = get_last_nonnan_index(high_pivots)
-        new_lp_index = get_last_nonnan_index(low_pivots)
+        hp_index = last_nonnan(high_pivots)
+        lp_index = last_nonnan(low_pivots)
+        print(high_pivots)
+        print(low_pivots)
 
         # if there is not a new high pivot, just increment x-axis projection
-        if new_hp_index is None:
-            self._hp_index += 1
+        if hp_index is None:
+            self._hp_bars = self._hp_bars + 1 if self._hp_bars else None
         else:
-            print(new_lp_index, self._window)
-            self._hp_index = new_hp_index
-            self._hp_value = high_pivots[-self._hp_index]
-            self._hp_slope = calculate_slope(self._batch, self._hp_index,
-                                    self._window, self._alpha, self._method)
+            self._hp_value = high_pivots[hp_index]
+            hp_data = self._batch[hp_index - self._window: hp_index + 1]
+            self._hp_slope = calc_slope(hp_data, self._window,
+                                        self._alpha, self._method)
+            self._hp_bars = self._batch.shape[0] - hp_index
 
         # if there is not a new low pivot, just increment x-axis projection
-        if new_lp_index is None:
-            self._lp_index += 1
+        if lp_index is None:
+            self._lp_bars = self._lp_bars + 1 if self._lp_bars else None
         else:
-            print(new_lp_index, self._window)
-            self._lp_index = new_lp_index
-            self._lp_value = high_pivots[-self._lp_index]
-            self._hp_slope = calculate_slope(self._batch, self._hp_index,
-                                    self._window, self._alpha, self._method)
+            self._lp_value = high_pivots[lp_index]
+            lp_data = self._batch[lp_index - self._window: lp_index + 1]
+            self._lp_slope = calc_slope(lp_data, self._window,
+                                        self._alpha, self._method)
+            self._lp_bars = self._batch.shape[0] - lp_index
 
     def generate_entry_signal(self, candle: recarray) -> int:
-        candles = append(self._batch, candle)
+        # candles = append(self._batch, candle)
 
-        # calculate line projection to current candle
-        buy_line = self._hp_value - self._hp_index * self._hp_slope
-        sell_line = self._last_lp + self._lp_index * self._lp_slope
+        # calculate line projection from high pivot to current candle
+        if self._hp_bars is not None:
+            buy_line = self._hp_value - self._hp_bars * self._hp_slope
+            print(
+                f"{self._hp_value=}, {buy_line=}, {self._hp_slope=}, {self._hp_bars=}")
+            if is_crossingover(candle, buy_line):
+                return 0  # buy
+        # calculate line projection from low pivot to current candle
+        if self._lp_bars is not None:
+            sell_line = self._lp_value + self._lp_bars * self._lp_slope
 
-        if is_crossingover(candles, buy_line):
-            return 0 # buy
-        elif is_crossingover(candles, sell_line):
-            return 1 # sell
-        return -1 # netral
+            if is_crossingover(candle, sell_line):
+                return 1  # sell
+
+        return -1  # netral
