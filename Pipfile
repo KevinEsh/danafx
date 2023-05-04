@@ -18,6 +18,7 @@ autopep8 = "~=2.0"
 dash = "~=2.9"
 plotly = "~=5.14"
 yfinance = "~=0.2"
+python-telegram-bot = "~=20.2"
 
 [requires]
 python_version = "3.9"
