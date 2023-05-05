@@ -26,7 +26,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/KevinEsh/danafx">
-    <img src="images/danafx.png" alt="Logo" width="150" height="240">
+    <img src="images/danafxv2.png" alt="Logo" width="150" height="240">
   </a>
 
   <h3 align="center">DanaFX</h3>
@@ -102,7 +102,6 @@ This section should list any major frameworks/libraries used to bootstrap your p
 minimal install
 
 ![python][python-shield]
-
 ![scipy][scipy-shield] ![numpy][numpy-shield] ![numba][numba-shield] ![pandas][pandas-shield] ![sklearn][sklearn-shield] ![metatrader5][mt5-shield] ![talib][talib-shield]
 
 dev extension
