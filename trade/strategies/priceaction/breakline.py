@@ -33,11 +33,16 @@ from trade.indicators import PIVOTHIGH, PIVOTLOW
 
 
 def is_crossingover(
-    candle: CandleLike,
+    candles: CandleLike,
     value: float,
-    offset: int = 0
+    fromtop: bool,
+    offset: int = 0,
 ) -> bool:
-    return candle.open < value < candle.close
+    prev_candle = candles[offset-2]
+    curr_candle = candles[offset-1]
+    if fromtop:
+        return prev_candle.close >= value > curr_candle.close
+    return prev_candle.close <= value < curr_candle.close
 
 
 def last_nonnan(arr):
@@ -65,9 +70,9 @@ def calc_slope(
     c = data.close
 
     if method == "atr":
-        return ATR_(h, l, c, window) / (window * alpha)
+        return alpha * ATR_(h, l, c, window) / window
     elif method == "stdev":
-        return STDDEV_(c, window) / (window * alpha)
+        return alpha * STDDEV_(c, window) / window
     elif method == "linreg":
         bar_indexes = arange(window)
         return 2 * alpha * abs((SMA_(c[-window:] * bar_indexes, window) - SMA_(c[-window:], window) * SMA_(bar_indexes, window)) / VAR_(bar_indexes, window))
@@ -75,7 +80,7 @@ def calc_slope(
 
 class TrendlineBreakStrategy(TradingStrategy):
     config_window = Hyperparameter("window", "numeric", (1, 1000))
-    config_alpha = Hyperparameter("alpha", "numeric", (1e-5, 1e5))
+    config_alpha = Hyperparameter("alpha", "numeric", (0, 1e5))
     config_offset = Hyperparameter("offset", "numeric", (-2, 0))
     # config_source = Hyperparameter("source", "categoric", OHLCbounds)
     config_method = Hyperparameter(
@@ -152,30 +157,33 @@ class TrendlineBreakStrategy(TradingStrategy):
                                 self._window, self._window)
         low_pivots = PIVOTLOW(self.train_data.low,
                               self._window, self._window)
-        print(high_pivots)
-        print(low_pivots)
 
         # Just take into account the last pivots. Those will make the prediction
         hp_index = last_nonnan(high_pivots)
         lp_index = last_nonnan(low_pivots)
 
-        # Calculate line accourding to method selected by user
+        # Calculate line projection from pivot point as per to method selected by user
         if hp_index is not None:
-            self._hp_value = high_pivots[hp_index]
+            # get window data previous to pivot
             hp_data = self.train_data[hp_index - self._window: hp_index + 1]
+            # get pivot point, slope and #bars until current bar
+            self._hp_value = high_pivots[hp_index]
             self._hp_slope = calc_slope(hp_data, self._window,
                                         self._alpha, self._method)
             self._hp_bars = self.train_data.shape[0] - hp_index
-            print(f"{self._hp_bars=}, {self._hp_value=}, {hp_index=}")
+            print(f"{self._hp_value=}")
 
         if lp_index is not None:
-            self._lp_value = low_pivots[lp_index]
+            # get window data previous to pivot
             lp_data = self.train_data[lp_index - self._window: lp_index + 1]
+            # get pivot point, slope and #bars until current bar
+            self._lp_value = low_pivots[lp_index]
             self._lp_slope = calc_slope(lp_data, self._window,
                                         self._alpha, self._method)
             self._lp_bars = self.train_data.shape[0] - lp_index
+            print(f"{self._lp_value=}")
 
-            print(f"{self._lp_bars=}, {self._lp_value=}, {lp_index=}")
+        self._batch = self.train_data[-self.min_bars:]
 
     def update_data(self, new_data: recarray) -> None:
         if not self.is_new_data(new_data):
@@ -193,44 +201,44 @@ class TrendlineBreakStrategy(TradingStrategy):
         # Just take into account the last pivots. Those will make the prediction
         hp_index = last_nonnan(high_pivots)
         lp_index = last_nonnan(low_pivots)
-        print(high_pivots)
-        print(low_pivots)
 
         # if there is not a new high pivot, just increment x-axis projection
-        if hp_index is None:
-            self._hp_bars = self._hp_bars + 1 if self._hp_bars else None
-        else:
-            self._hp_value = high_pivots[hp_index]
+        if hp_index is None and self._hp_bars is not None:
+            self._hp_bars += 1
+        elif hp_index is not None:
             hp_data = self._batch[hp_index - self._window: hp_index + 1]
+            self._hp_value = high_pivots[hp_index]
             self._hp_slope = calc_slope(hp_data, self._window,
                                         self._alpha, self._method)
             self._hp_bars = self._batch.shape[0] - hp_index
 
         # if there is not a new low pivot, just increment x-axis projection
-        if lp_index is None:
-            self._lp_bars = self._lp_bars + 1 if self._lp_bars else None
-        else:
-            self._lp_value = high_pivots[lp_index]
+        if lp_index is None and self._lp_bars is not None:
+            self._lp_bars += 1
+        elif lp_index is not None:
             lp_data = self._batch[lp_index - self._window: lp_index + 1]
+            self._lp_value = low_pivots[lp_index]
             self._lp_slope = calc_slope(lp_data, self._window,
                                         self._alpha, self._method)
             self._lp_bars = self._batch.shape[0] - lp_index
 
     def generate_entry_signal(self, candle: recarray) -> int:
-        # candles = append(self._batch, candle)
+        batch = append(self._batch, candle).view(recarray)
+        print(f"{batch[-2+self._offset].close}, {batch[-1+self._offset].close}")
 
         # calculate line projection from high pivot to current candle
         if self._hp_bars is not None:
             buy_line = self._hp_value - self._hp_bars * self._hp_slope
-            print(
-                f"{self._hp_value=}, {buy_line=}, {self._hp_slope=}, {self._hp_bars=}")
-            if is_crossingover(candle, buy_line):
+            print(round(buy_line, 5), round(
+                batch[-1+self._offset].close - buy_line, 5))
+            if is_crossingover(batch, buy_line, False, self._offset):
                 return 0  # buy
         # calculate line projection from low pivot to current candle
         if self._lp_bars is not None:
             sell_line = self._lp_value + self._lp_bars * self._lp_slope
-
-            if is_crossingover(candle, sell_line):
+            print(round(sell_line, 5), round(
+                batch[-1+self._offset].close - sell_line, 5))
+            if is_crossingover(batch, sell_line, True, self._offset):
                 return 1  # sell
 
         return -1  # netral
