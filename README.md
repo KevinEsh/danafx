@@ -102,7 +102,13 @@ This section should list any major frameworks/libraries used to bootstrap your p
 minimal install
 
 ![python][python-shield]
-![scipy][scipy-shield] ![numpy][numpy-shield] ![numba][numba-shield] ![pandas][pandas-shield] ![sklearn][sklearn-shield] ![metatrader5][mt5-shield] ![talib][talib-shield]
+![scipy][scipy-shield]
+![numpy][numpy-shield]
+![numba][numba-shield]
+![pandas][pandas-shield]
+![sklearn][sklearn-shield]
+![talib][talib-shield]
+![metatrader5][mt5-shield]
 
 dev extension
 
