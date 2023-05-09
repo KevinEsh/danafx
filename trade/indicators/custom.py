@@ -2,13 +2,13 @@ import numpy as np
 from talib import MAX, MIN, EMA, SMA
 
 from trade.metadata import CandleLike
-from preputils.clean import copy_format, asrecarray
+from preputils.custom import get_recarray, rolling_apply
 
 
 def HL2(
     high: CandleLike,
     low: CandleLike,
-    keep_format: bool = False
+    asrecarray: bool = False
 ) -> CandleLike:
     """
     Calculates the HL2 (high plus low divided by 2) for the given high and low candle-like data.
@@ -16,14 +16,15 @@ def HL2(
     Args:
         high (CandleLike): The high values of the candles.
         low (CandleLike): The low values of the candles.
-        keep_format (bool): If True, the output will have the same format as the input (i.e. same type and attributes).
+        asrecarray (bool): If True, the output will have the same format as the input (i.e. same type and attributes).
 
     Returns:
         CandleLike: The calculated HL2 values.
     """
     hl2 = (high + low) / 2.
-    if keep_format:
-        hl2 = copy_format(hl2, high, name="hl2")
+
+    if asrecarray:
+        hl2 = get_recarray([hl2], names="hl2", formats="<f8")
     return hl2
 
 
@@ -31,7 +32,7 @@ def HLC3(
     high: CandleLike,
     low: CandleLike,
     close: CandleLike,
-    keep_format: bool = False,
+    asrecarray: bool = False,
 ) -> CandleLike:
     """
     Calculates the HLC3 (high plus low plus close divided by 3) for the given high, low and close candle-like data.
@@ -40,14 +41,15 @@ def HLC3(
         high (CandleLike): The high values of the candles.
         low (CandleLike): The low values of the candles.
         close (CandleLike): The close values of the candles.
-        keep_format (bool): If True, the output will have the same format as the input (i.e. same type and attributes).
+        asrecarray (bool): If True, the output will have the same format as the input (i.e. same type and attributes).
 
     Returns:
         CandleLike: The calculated HL2 values.
     """
     hlc3 = (high + low + close) / 3.
-    if keep_format:
-        hlc3 = copy_format(hlc3, high, name="hlc3")
+
+    if asrecarray:
+        hlc3 = get_recarray([hlc3], names="hlc3", formats="<f8")
     return hlc3
 
 
@@ -56,6 +58,7 @@ def OHLC4(
     high: CandleLike,
     low: CandleLike,
     close: CandleLike,
+    asrecarray: bool = False,
 ) -> CandleLike:
     """
     Calculates the HLC3 (open plus high plus low plus close divided by 4) for the
@@ -66,12 +69,14 @@ def OHLC4(
         high (CandleLike): The high values of the candles.
         low (CandleLike): The low values of the candles.
         close (CandleLike): The close values of the candles.
-        keep_format (bool): If True, the output will have the same format as the input (i.e. same type and attributes).
+        asrecarray (bool): If True, the output will have the same format as the input (i.e. same type and attributes).
 
     Returns:
         CandleLike: The calculated HL2 values.
     """
     ohlc4 = (open + high + low + close) / 4.
+    if asrecarray:
+        ohlc4 = get_recarray([ohlc4], names="ohlc4", formats="<f8")
     return ohlc4
 
 
@@ -79,8 +84,8 @@ def PIVOTHIGH(
     high: CandleLike,
     left: int,
     right: int,
-    as_recarray: bool = False
-) -> np.ndarray:
+    asrecarray: bool = False
+) -> CandleLike:
     """
     Calculates the pivot highs in an array of high values using the left and right periods.
 
@@ -94,11 +99,21 @@ def PIVOTHIGH(
     """
     pivots = np.roll(MAX(high, left + 1 + right), -right)
     pivots[pivots != high] = np.NaN
-    if as_recarray:
-        pivots = asrecarray(pivots, names=[f"pivothigh{left}_{right}"])
+
+    if asrecarray:
+        pivots = get_recarray(
+            [pivots],
+            names=f"pivothigh{left}{right}",
+            formats="<f8")
     return pivots
 
-def PIVOTLOW(low: np.ndarray, left: int, right: int) -> np.ndarray:
+
+def PIVOTLOW(
+    low: np.ndarray,
+    left: int,
+    right: int,
+    asrecarray: bool = False,
+) -> np.ndarray:
     """
     Calculates the pivot lows in an array of low values using the left and right periods.
 
@@ -112,36 +127,42 @@ def PIVOTLOW(low: np.ndarray, left: int, right: int) -> np.ndarray:
     """
     pivots = np.roll(MIN(low, left + 1 + right), -right)
     pivots[pivots != low] = np.NaN
+
+    if asrecarray:
+        pivots = get_recarray(
+            [pivots],
+            names=f"pivotlow{left}{right}",
+            formats="<f8")
     return pivots
 
 
 def DONCHAIN(
     ohlc: CandleLike,
     window: int = 20,
-    keep_format: bool = False,
-) -> tuple[CandleLike, CandleLike]:
+    asrecarray: bool = False,
+) -> CandleLike:
     """
     Calculates the Donchian Channel for the given candle-like data.
 
     Args:
         ohlc (CandleLike): The candle-like data to calculate the Donchian Channel from.
         window (int, optional): The lookback window size to use when calculating the Donchian Channel. Defaults to 20.
-        keep_format (bool): If True, the output will have the same format as the input (i.e. same type and attributes).
+        asrecarray (bool): If True, the output will have the same format as the input (i.e. same type and attributes).
 
     Returns:
-        tuple[CandleLike, CandleLike]: A tuple of two CandleLike, representing the upper and lower bounds of the Donchian Channel, respectively.
+        CandleLike: array of the upper and lower bounds of the Donchian Channel, respectively.
     """
     upper = MAX(ohlc, window)
     lower = MIN(ohlc, window)
-    if keep_format:
-        upper = copy_format(upper, ohlc, f"donchain_up_{window}")
-        lower = copy_format(lower, ohlc, f"donchain_low_{window}")
-    # donchain = np.rec.fromarrays(
-    #     [upper, lower],
-    #     names=["donchain_upper", "donchain_lower"],
-    #     formats=["<f8", "<f8"]
-    # )
-    return upper, lower
+
+    if asrecarray:
+        donchain = get_recarray(
+            [upper, lower],
+            names=[f"donup{window}", f"donlow{window}"],
+            formats=["<f8", "<f8"])
+    else:
+        donchain = np.array([upper, lower])
+    return donchain
 
 
 def WT(
@@ -150,7 +171,7 @@ def WT(
     close: CandleLike,
     window: int = 10,
     window_smooth: int = 11,
-    keep_format: bool = False,
+    asrecarray: bool = False,
 ) -> CandleLike:
     """
     Calculates the WaveTrend Classic indicator for the given candle-like data.
@@ -176,8 +197,8 @@ def WT(
     tci = EMA(ci, window_smooth)
     wt = SMA(tci, 4)
 
-    if keep_format:
-        wt = copy_format(wt, high, f"wt_{window}")
+    if asrecarray:
+        wt = get_recarray([wt], names=f"wt{window}", formats="<f8")
     return wt
 
 
@@ -185,7 +206,9 @@ def RQK(
     close: CandleLike,
     window: float = 8,
     alpha: float = 1,
-    keep_format: bool = False,
+    n_bars: int = None,
+    n_jobs: int = 1,
+    asrecarray: bool = False,
 ) -> CandleLike:
     """
     Computes the rolling Rational Quadratic Kernel (RQK) for a given time series of closing prices.
@@ -194,30 +217,31 @@ def RQK(
         close (CandleLike): The closing prices of the time series.
         window (float, optional): The rolling window size used to compute the kernel. Defaults to 8.
         alpha (float, optional): A parameter that controls the decay rate of the weights. Defaults to 1.
-        keep_format (bool, optional): Whether to return the output in the same format as the input. Defaults to False.
+        asrecarray (bool, optional): Whether to return the output in the same format as the input. Defaults to False.
 
     Returns:
         CandleLike: The rolling Rational Quadratic Kernel of the closing prices.
     """
-    size = close.size
-    weights = (1. + 0.5 * np.arange(size) ** 2. /
-               (alpha * (window ** 2.))) ** (-alpha)
-    cum_weights = weights.cumsum()
-    c = close.values[::-1]
-    rq = np.empty(size)
+    if not n_bars:
+        n_bars = close.shape[0]
 
-    for i in range(size):
-        j = size - i
-        rq[j - 1] = (c[i:] @ weights[:j]) / cum_weights[j-1]
-    if keep_format:
-        rq = copy_format(rq, close, f"rqk_{window}")
+    bars = (np.arange(n_bars) ** 2.)[::-1]
+    weights = (1. + 0.5 * bars / (alpha * window ** 2.)) ** (-alpha)
+    weights = weights / weights.sum()
+
+    rq = rolling_apply(lambda y: (y @ weights), n_bars, close, n_jobs=n_jobs)
+
+    if asrecarray:
+        rq = get_recarray(rq, names=f"rqk{window}", formats="<f8")
     return rq
 
 
 def RBFK(
     close: CandleLike,
     window: float = 16,
-    keep_format: bool = False,
+    n_bars: int = None,
+    n_jobs: int = 1,
+    asrecarray: bool = False,
 ) -> CandleLike:
     """
     Computes the Radial Basis Function kernel on a time series of close prices.
@@ -225,22 +249,20 @@ def RBFK(
     Args:
         close (CandleLike): The closing prices of the time series.
         window (float, optional): The lookback window parameter of the kernel. Defaults to 16.
-        keep_format (bool, optional): If True, returns the output with the same format as the input. Defaults to False.
+        asrecarray (bool, optional): If True, returns the output with the same format as the input. Defaults to False.
 
     Returns:
         CandleLike: The RBF kernel values of the time series.
     """
-    n = close.size
-    weights = np.exp(-0.5 * np.arange(n) ** 2 / (window ** 2))
-    cum_weights = weights.cumsum()
-    c = close.values[::-1]
-    rbfk = np.empty(n)
+    if not n_bars:
+        n_bars = close.shape[0]
 
-    for i in range(n):
-        j = n - i
-        rbfk[j-1] = (c[i:] @ weights[:j]) / cum_weights[j-1]
+    bars = (np.arange(n_bars) ** 2.)[::-1]
+    weights = np.exp(-0.5 * bars / (window ** 2))
+    weights = weights / weights.sum()
 
-    if keep_format:
-        rbfk = copy_format(rbfk, close, f"rbfk_{window}")
+    rbfk = rolling_apply(lambda y: (y @ weights), n_bars, close, n_jobs=n_jobs)
 
+    if asrecarray:
+        rbfk = get_recarray(rbfk, names=f"rbfk{window}", formats="<f8")
     return rbfk
