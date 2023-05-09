@@ -2,10 +2,11 @@ from trade.strategies.abstract import Hyperparameter, TradingStrategy
 from numpy import recarray
 
 
-class DualMavStrategy(TradingStrategy):
+class DualSmaStrategy(TradingStrategy):
     config_short_window = Hyperparameter("short_window", "numeric", (2, 1000))
     config_long_window = Hyperparameter("long_window", "numeric", (2, 1000))
-    config_neutral_band = Hyperparameter("neutral_band", "interval", (-1000, 1000))
+    config_neutral_band = Hyperparameter(
+        "neutral_band", "interval", (-1000, 1000))
 
     def __init__(
         self,
@@ -53,8 +54,10 @@ class DualMavStrategy(TradingStrategy):
     def fit(self, train_data: recarray) -> None:
         # Precalculate MAVs. This will save a lot of computational time
         super().fit(train_data)
-        self._cached_mav_short = self.train_data.close[(1 - self.short_window):].sum()
-        self._cached_mav_long = self.train_data.close[(1 - self.long_window):].sum()
+        self._cached_mav_short = self.train_data.close[(
+            1 - self.short_window):].sum()
+        self._cached_mav_long = self.train_data.close[(
+            1 - self.long_window):].sum()
         return
 
     def update_data(self, new_data: recarray) -> None:
@@ -74,7 +77,8 @@ class DualMavStrategy(TradingStrategy):
         self._cached_mav_long += new_mav - self.train_data.close[l1:l2].sum()
 
         # Then replace oldest data
-        return super().update_data(new_data)  # TODO Aqui va a haber un pedo cuando se actualicen con strategias compuestas
+        # TODO Aqui va a haber un pedo cuando se actualicen con strategias compuestas
+        return super().update_data(new_data)
 
     def generate_entry_signal(self, datum: recarray) -> int:
         # Calculate short and long moving averages
