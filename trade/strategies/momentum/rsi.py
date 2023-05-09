@@ -1,4 +1,4 @@
-from numpy import recarray, append, sqrt
+from numpy import recarray, append
 
 from trade.strategies.abstract import Hyperparameter, TradingStrategy, OHLCbounds
 from trade.indicators import RSI, get_stable_min_bars
