@@ -69,6 +69,10 @@ def get_stable_min_bars(indicator: str, window: int) -> int:
         return int((11.24 * window + 7.26) ** (1./1.2))
     elif indicator == "ADX":
         return int((138.2 * window - 155.55) ** (1./1.53))
+    elif indicator == "RQK":
+        return 3500  # TODO: experimentar esta madre
+    elif indicator == "RBFK":
+        return 90  # TODO: confiable, pero mejor experimenta para cualquier ventana
     elif indicator == "WT":
         if 2 <= window <= 14:
             return int(2.36 * window + 61.51)
