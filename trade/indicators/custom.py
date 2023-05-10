@@ -2,7 +2,7 @@ import numpy as np
 from talib import MAX, MIN, EMA, SMA
 
 from trade.metadata import CandleLike
-from preputils.custom import get_recarray, rolling_apply
+from preputils.custom import get_recarray, rolling_apply, drop_na
 
 
 def HL2(
@@ -209,6 +209,7 @@ def RQK(
     n_bars: int = None,
     n_jobs: int = 1,
     asrecarray: bool = False,
+    dropna: bool = False,
 ) -> CandleLike:
     """
     Computes the rolling Rational Quadratic Kernel (RQK) for a given time series of closing prices.
@@ -227,12 +228,16 @@ def RQK(
 
     bars = (np.arange(n_bars) ** 2.)[::-1]
     weights = (1. + 0.5 * bars / (alpha * window ** 2.)) ** (-alpha)
-    weights = weights / weights.sum()
 
     rq = rolling_apply(lambda y: (y @ weights), n_bars, close, n_jobs=n_jobs)
+    rq /= weights.sum()
+
+    if dropna:
+        rq = drop_na(rq)
 
     if asrecarray:
         rq = get_recarray(rq, names=f"rqk{window}", formats="<f8")
+
     return rq
 
 
@@ -242,6 +247,7 @@ def RBFK(
     n_bars: int = None,
     n_jobs: int = 1,
     asrecarray: bool = False,
+    dropna: bool = False,
 ) -> CandleLike:
     """
     Computes the Radial Basis Function kernel on a time series of close prices.
@@ -259,10 +265,14 @@ def RBFK(
 
     bars = (np.arange(n_bars) ** 2.)[::-1]
     weights = np.exp(-0.5 * bars / (window ** 2))
-    weights = weights / weights.sum()
 
     rbfk = rolling_apply(lambda y: (y @ weights), n_bars, close, n_jobs=n_jobs)
+    rbfk /= weights.sum()
+
+    if dropna:
+        rbfk = drop_na(rbfk)
 
     if asrecarray:
         rbfk = get_recarray(rbfk, names=f"rbfk{window}", formats="<f8")
+
     return rbfk
