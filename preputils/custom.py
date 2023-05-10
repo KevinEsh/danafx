@@ -205,7 +205,12 @@ def drop_na(array: np.ndarray) -> np.ndarray:
     >>> drop_na(np.array([np.nan, 1, 2]))
     array([1., 2.])
     """
-    return array[~np.isnan(array)]
+    # find the indices of the NaN values in the array
+    nan_indices = np.where(np.isnan(array))
+
+    # delete the NaN values from the array
+    return np.delete(array, nan_indices)
+    # return array[~np.isnan(array)]
 
 
 def fill_na(array: np.ndarray, value: Any) -> np.ndarray:
