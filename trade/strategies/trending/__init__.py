@@ -1,1 +1,2 @@
-from trade.strategies.priceaction.breakline import TrendlineBreakStrategy
+from trade.strategies.trending.dualsma import DualSmaStrategy
+from trade.strategies.trending.nadaraya_watson import DualNadarayaKernelStrategy
