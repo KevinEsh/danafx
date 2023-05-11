@@ -39,6 +39,24 @@ from numpy.core.records import fromarrays as get_recarray
 Number = Union[int, float]
 
 
+def addpop(arr: np.recarray, value: Number) -> np.ndarray:
+    """Appends a value to the end of an array and pops the first value of the array.
+
+    Args:
+      array: The NumPy array to append the value to and pop the first value from.
+      value: The value to append to the end of the array.
+
+    Returns:
+      The new array after the value has been appended and the first value has been popped.
+    """
+
+    # Append the value to the end of the array.
+    arr = np.append(arr, value)
+
+    # Pop the first value of the array.
+    return np.delete(arr, 0)
+
+
 def concat_recarrays(
     arr1: np.recarray,
     arr2: np.recarray,

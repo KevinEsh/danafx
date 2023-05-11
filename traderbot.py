@@ -48,7 +48,7 @@ class SingleTraderBot:
             self.state = AssetStateMachine()
 
         train_data = self.broker.get_candles(self.symbol, self.timeframe,
-                                             100, 1)
+                                             self.strategy.min_bars, 1)
         #  self.strategy.min_bars, 1)
         self.strategy.fit(train_data)
 
@@ -81,7 +81,7 @@ class SingleTraderBot:
             # If no position is placed, create an entry signal
             if self.state.null_position:
                 entry_signal = self.strategy.get_entry_signal(current_candle)
-                print(entry_signal.name)
+                # print(entry_signal.name)
                 # entry_signal = None
 
                 # If you get and entry signal either BUY or SELL, create an market order
@@ -129,8 +129,9 @@ class SingleTraderBot:
 if __name__ == "__main__":
     from utils.config import get_settings
     # from trade.strategies.trending import DualMavStrategy
-    from trade.strategies.momentum import RsiStrategy
-    from trade.strategies.trending import TrendlineBreakStrategy
+    # from trade.strategies.momentum import RsiStrategy
+    # from trade.strategies.trending import TrendlineBreakStrategy
+    from trade.strategies.trending import DualNadarayaKernelStrategy
 
     login_settings = get_settings("settings/demo/login.json")
     # trading_settings = get_settings("settings/demo/trading.json")
@@ -146,7 +147,8 @@ if __name__ == "__main__":
     # strategy = DualMavStrategy(5, 200, neutral_band=(-0.0004, 0.0004), inverse=True)
     # strategy = DualRmaStrategy(5, 200, neutral_band=(-0.0004, 0.0004), inverse=True)
     # strategy = RsiStrategy(14, (0, 23), (70, 100), mode="outband")
-    strategy = TrendlineBreakStrategy(window=5, alpha=1.856, offset=-1)
+    # strategy = TrendlineBreakStrategy(window=5, alpha=1.856, offset=-1)
+    strategy = DualNadarayaKernelStrategy(lag=1)
 
     risk_params = {
         "pips": 5,
@@ -154,7 +156,7 @@ if __name__ == "__main__":
         "rr_ratio": 2,
     }
 
-    trader = SingleTraderBot(symbol, "M5", risk_params, 5)
+    trader = SingleTraderBot(symbol, "M1", risk_params, 5)
     trader.set_broker(broker)
     trader.set_strategy(strategy)
 
