@@ -1,4 +1,5 @@
-from numpy import ndarray, append
+from numpy import ndarray
+from preputils.custom import addpop
 
 from trade.metadata import CandleLike
 from trade.indicators import RBFK, RQK, get_stable_min_bars
@@ -8,7 +9,7 @@ from trade.strategies.abstract import Hyperparameter, TradingStrategy
 def crossingover(
     source1: ndarray,
     source2: ndarray,
-    band: tuple[int, int] = (0, 0)
+    delta: float = 0
 ) -> bool:
     """Check if the final value of source1 is greater than the final value of source2
     #and if the value of source1 on the previous bar was less than or equal to
@@ -21,7 +22,7 @@ def crossingover(
     Returns:
         bool: Signal if the source1 crosses over source2
     """
-    if (source1[-1] > source2[-1] + band[1]) and (source1[-2] <= source2[-2]):
+    if (source1[-1] > source2[-1] + delta) and (source1[-2] <= source2[-2]):
         return True
     else:
         return False
@@ -30,7 +31,7 @@ def crossingover(
 def crossingunder(
     source1: ndarray,
     source2: ndarray,
-    band: tuple[int, int] = (0, 0)
+    delta: float = 0,
 ) -> bool:
     """Check if the final value of source1 is greater than the final value of source2
     #and if the value of source1 on the previous bar was less than or equal to
@@ -43,7 +44,7 @@ def crossingunder(
     Returns:
         bool: Signal if the source1 crosses under source2
     """
-    if (source1[-1] < source2[-1] + band[0]) and (source1[-2] >= source2[-2]):
+    if (source1[-1] < source2[-1] + delta) and (source1[-2] >= source2[-2]):
         return True
     else:
         return False
@@ -183,8 +184,8 @@ class DualNadarayaKernelStrategy(TradingStrategy):
                         self._rbfk_bars, dropna=True)
 
         # Finally add them to the queue TODO: corregir el codigo para que puedan ser mas velas
-        self._rqk_queue = append(self._rqk_queue, new_rqk[-1])
-        self._rbfk_queue = append(self._rbfk_queue, new_rbfk[-1])
+        self._rqk_queue = addpop(self._rqk_queue, new_rqk[-1])
+        self._rbfk_queue = addpop(self._rbfk_queue, new_rbfk[-1])
         # TODO: crear funcion en preputils.custom para eliminar el primer elemento y pegar uno nuevo al final
         # print(self._rqk_queue)
         # print(self._rbfk_queue)
@@ -192,8 +193,8 @@ class DualNadarayaKernelStrategy(TradingStrategy):
     def generate_entry_signal(self, candle: CandleLike) -> int:
         # If lag = 0 that means we need to calculate indicators with current candle
         if self._lag == 0:
-            batch_rqk = append(self._batch_rqk.close, candle.close)
-            batch_rbfk = append(self._batch_rbfk.close, candle.close)
+            batch_rqk = addpop(self._batch_rqk.close, candle.close)
+            batch_rbfk = addpop(self._batch_rbfk.close, candle.close)
 
             # Calculate indicator for current candle
             rqk = RQK(batch_rqk, self._window_rqk, self._alpha_rq,
@@ -212,9 +213,9 @@ class DualNadarayaKernelStrategy(TradingStrategy):
         #     f"[{line_rqk[0]=:.5f}, {line_rqk[1]=:.5f}][{line_rbfk[0]=:.5f}, {line_rbfk[1]=:.5f}]")
 
         # Detect tendency and return signal
-        if crossingover(line_rbfk, line_rqk, self._neutral_band):
+        if crossingover(line_rbfk, line_rqk, self._neutral_band[1]):
             return 0  # buy
-        elif crossingunder(line_rbfk, line_rqk, self._neutral_band):
+        elif crossingunder(line_rbfk, line_rqk, self._neutral_band[0]):
             return 1  # sell
         else:
             return -1  # neutral
