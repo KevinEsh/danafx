@@ -51,7 +51,7 @@ class GaussianStockRegressor:
 if __name__ == "__main__":
     import pickle
     import matplotlib.pyplot as plt
-    from preputils.pipeflow import preprocess_stock_data
+    from datatools.pipeflow import preprocess_stock_data
     from setup import get_settings
     from trade.brokers.mt5broker import BrokerSession
     # from matplotlib.pyplot import plot, savefig

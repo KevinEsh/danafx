@@ -1,6 +1,6 @@
 from numpy import ndarray
-from preputils.custom import addpop
-from preputils.technical import crossingover, crossingunder
+from datatools.custom import addpop
+from datatools.technical import crossingover, crossingunder
 
 from trade.metadata import CandleLike
 from trade.indicators import RBFK, RQK, get_stable_min_bars
@@ -140,10 +140,9 @@ class DualNadarayaKernelStrategy(TradingStrategy):
         new_rbfk = RBFK(self._batch_rbfk.close, (self._window_rbfk - self._lag),
                         self._rbfk_bars, dropna=True)
 
-        # Finally add them to the queue TODO: corregir el codigo para que puedan ser mas velas
-        self._rqk_queue = addpop(self._rqk_queue, new_rqk[-1])
-        self._rbfk_queue = addpop(self._rbfk_queue, new_rbfk[-1])
-        # TODO: crear funcion en preputils.custom para eliminar el primer elemento y pegar uno nuevo al final
+        # Finally add them to the queue
+        self._rqk_queue = addpop(self._rqk_queue, new_rqk)
+        self._rbfk_queue = addpop(self._rbfk_queue, new_rbfk)
         # print(self._rqk_queue)
         # print(self._rbfk_queue)
 
