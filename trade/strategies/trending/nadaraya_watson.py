@@ -1,8 +1,8 @@
 from numpy import ndarray
-from datatools.custom import addpop
+from datatools.custom import addpop, get_recarray
 from datatools.technical import crossingover, crossingunder
 
-from trade.metadata import CandleLike
+from trade.metadata import CandleLike, EntrySignal
 from trade.indicators import RBFK, RQK, get_stable_min_bars
 from trade.strategies.abstract import Hyperparameter, TradingStrategy
 
@@ -123,6 +123,9 @@ class DualNadarayaKernelStrategy(TradingStrategy):
         self._batch_rqk = self.train_data[-self._rqk_bars:]
         self._batch_rbfk = self.train_data[-self._rbfk_bars:]
 
+        # signals = self.batch_signals()
+        # print(signals)
+
     def update_data(self, new_candles: CandleLike) -> None:
         if not self.is_new_data(new_candles):
             return
@@ -169,9 +172,21 @@ class DualNadarayaKernelStrategy(TradingStrategy):
         #     f"[{line_rqk[0]=:.5f}, {line_rqk[1]=:.5f}][{line_rbfk[0]=:.5f}, {line_rbfk[1]=:.5f}]")
 
         # Detect tendency and return signal
-        if crossingover(line_rbfk, line_rqk, self._neutral_band[1]):
-            return 0  # buy
-        elif crossingunder(line_rbfk, line_rqk, self._neutral_band[0]):
-            return 1  # sell
+        if crossingover(line_rbfk, line_rqk, self._neutral_band[1])[-1]:
+            return EntrySignal.BUY.value
+        elif crossingunder(line_rbfk, line_rqk, self._neutral_band[0])[-1]:
+            return EntrySignal.SELL.value
         else:
-            return -1  # neutral
+            return EntrySignal.NEUTRAL.value
+
+    def batch_signals(self):
+        # Precalculate RQK & RBFK. This will save computational time
+        rqks = RQK(self.train_data.close, self._window_rqk, self._alpha_rq,
+                   self._rqk_bars)
+        rbfks = RBFK(self.train_data.close, (self._window_rbfk - self._lag),
+                     self._rbfk_bars)
+
+        buy_signals = crossingover(rqks, rbfks, self.neutral_band[1])
+        sell_signals = crossingunder(rqks, rbfks, self.neutral_band[0])
+
+        return get_recarray([buy_signals, sell_signals], names=["buy", "sell"])
