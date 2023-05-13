@@ -51,3 +51,57 @@ def crossingunder(arr1: np.ndarray, arr2: np.ndarray, delta: float = 0):
     result[1:][cross_points] = True
 
     return result
+
+
+def above(arr1: np.ndarray, arr2: np.ndarray, delta: float = 0):
+    """Check if the value of arr1 is currently greater than the final value of arr2,
+    and if the value of arr1 on the previous time step was less than or equal to
+    the value of arr2.
+
+    Args:
+        arr1 (ndarray): First time series to check for a crossover.
+        arr2 (ndarray): Second time series used as a reference for the crossover.
+        delta (float, optional): A threshold value to add/subtract from arr2. Default is 0.
+
+    Returns:
+        bool: True if arr1 is currently above arr2 and was below or equal to it on the previous time step.
+    """
+    return np.where(arr1 > arr2 + delta, True, False)
+
+def below(arr1: np.ndarray, arr2: np.ndarray, delta: float = 0):
+    """Check if the value of arr1 is currently greater than the final value of arr2,
+    and if the value of arr1 on the previous time step was less than or equal to
+    the value of arr2.
+
+    Args:
+        arr1 (ndarray): First time series to check for a crossover.
+        arr2 (ndarray): Second time series used as a reference for the crossover.
+        delta (float, optional): A threshold value to add/subtract from arr2. Default is 0.
+
+    Returns:
+        bool: True if arr1 is currently above arr2 and was below or equal to it on the previous time step.
+    """
+    return np.where(arr1 < arr2 + delta, True, False)
+
+def onband(
+        arr1: np.ndarray, 
+        arr2: np.ndarray, 
+        band: tuple[float, float] = (0, 0)
+    ) -> np.ndarray:
+    """Check if the value of arr1 is currently greater than the final value of arr2,
+    and if the value of arr1 on the previous time step was less than or equal to
+    the value of arr2.
+
+    Args:
+        arr1 (ndarray): First time series to check for a crossover.
+        arr2 (ndarray): Second time series used as a reference for the crossover.
+        delta (float, optional): A threshold value to add/subtract from arr2. Default is 0.
+
+    Returns:
+        bool: True if arr1 is currently above arr2 and was below or equal to it on the previous time step.
+    """
+    result = np.logical_and(
+        arr1 <= arr2 + band[1],
+        arr1 >= arr2 + band[0],
+    )
+    return result
