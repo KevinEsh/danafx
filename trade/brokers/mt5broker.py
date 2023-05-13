@@ -371,11 +371,11 @@ class Mt5Session(BrokerSession):
         if base_currency == self.account_info.currency:
             exchange_rate = 1.0
         else:
-            m1 = TimeFrames["M1"].value
+            m10 = TimeFrames["M10"].value
             exchange_symbol = self.account_info.currency + base_currency
             # exchange_rate = mt5.copy_rates_from_pos(exchange_symbol, m1, 0, 1)[0][1]  # open price
             exchange_rate = mt5.copy_rates_from_pos(
-                exchange_symbol, m1, 0, 1)[0][3]  # low price
+                exchange_symbol, m10, 0, 1)[0][3]  # low price
 
         return exchange_rate
 
