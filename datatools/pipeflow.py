@@ -1,7 +1,11 @@
 
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import FunctionTransformer
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import numpy as np
+from pandas import DataFrame
 from datatools.transform import Smoother, RangeScaler
 
 
@@ -36,6 +40,42 @@ column_transformer = ColumnTransformer(
         # Normalize col2 using MinMaxScaler
         ('minmax_scaler_1', MinMaxScaler(**params), ['col2']),
     ])
+
+
+# Assuming recarray data has been loaded into 'data'
+
+
+def transform(candles):
+    df = DataFrame()
+
+    # Adding new columns
+    df['range'] = candles.high - candles.low
+    df['change'] = candles.close - candles.open
+
+    # Define your custom scaler
+    def custom_scaler(X):
+        # Define your custom transformation here
+        return X / np.max(X)
+
+    CustomScaler = FunctionTransformer(custom_scaler, kw_args={})
+
+    # Define preprocessing pipeline
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('minmax_for_range', MinMaxScaler((-1, 1)), ['range']),
+            ('custom_for_change', CustomScaler, ['change']),
+        ])
+
+    # Apply preprocessing pipeline
+    df_preprocessed = preprocessor.fit_transform(df)
+    f = get_recarray(df_preprocessed.T, names=["rate", "change"])
+
+    concat_recarrays(candles, f)
+# If you want the output to remain a DataFrame
+#df_preprocessed = pd.DataFrame(df_preprocessed, columns=['range', 'change'])
+# Assuming 'df' is your DataFrame
+# df_preprocessed.to_records(index=False)
+
 
 # Apply the transformations to the columns of interest
 columns_to_transform = ['col1', 'col2']
