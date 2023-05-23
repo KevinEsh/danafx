@@ -1,61 +1,49 @@
 
-from sklearn.preprocessing import MinMaxScaler
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import FunctionTransformer
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import numpy as np
 from pandas import DataFrame
-from datatools.transform import Smoother, RangeScaler
 
 
-def build_pipeline(config_data):
-    for col_name, config in config_data.items():
+def build_pipeline(config_pipeline: dict):
+    # Define the columns and their corresponding transformers
+    for name, config in config_pipeline.items():
         trans = config.get("transform")
         if not trans:
             continue
         transformers = []
         for action, params in trans.items():
             if action == "scaled":
-                t = (f"{col_name}_{action}", Scaler(
-                    **params), col_name)  # TODO
+                t = (f"{name}_{action}", get_scaler(**params), name)
             elif action == "smoother":
-                t = (f"{col_name}_{action}", Smoother(**params), col_name)
-            elif action == "fillna":
-                t = (f"{col_name}_{action}", Filler(
-                    **params), col_name)  # TODO
+                t = (f"{name}_{action}", get_smoother(**params), name)
+            elif action == "filled":
+                t = (f"{name}_{action}", get_filler(**params), name)  # TODO
             transformers.append(t)
-
     return ColumnTransformer(transformers)
 
 
-# Define the columns and their corresponding transformers
-column_transformer = ColumnTransformer(
-    transformers=[
-        ("smooth_ema_3", Smoother(**params), ["col1", "col2"]),
-        ("smooth_sma_2", Smoother(**params), ["col1", "col2"]),
-        ("range_scaler", RangeScaler(**params))
-        # Normalize col1 using StandardScaler
-        ('standard_scaler_1', StandardScaler(**params), ['col1']),
-        # Normalize col2 using MinMaxScaler
-        ('minmax_scaler_1', MinMaxScaler(**params), ['col2']),
-    ])
+# column_transformer = ColumnTransformer(
+#     transformers=[
+#         ("smooth_ema_3", Smoother(**params), ["col1", "col2"]),
+#         ("smooth_sma_2", Smoother(**params), ["col1", "col2"]),
+#         ("range_scaler", RangeScaler(**params))
+#         # Normalize col1 using StandardScaler
+#         ('standard_scaler_1', StandardScaler(**params), ['col1']),
+#         # Normalize col2 using MinMaxScaler
+#         ('minmax_scaler_1', MinMaxScaler(**params), ['col2']),
+#     ])
+
+def add_newcols():
+    pass
 
 
-# Assuming recarray data has been loaded into 'data'
-
-
-def transform(candles):
+def transform(candles, pipeline):
     df = DataFrame()
 
     # Adding new columns
-    df['range'] = candles.high - candles.low
-    df['change'] = candles.close - candles.open
-
-    # Define your custom scaler
-    def custom_scaler(X):
-        # Define your custom transformation here
-        return X / np.max(X)
+    # df['range'] = candles.high - candles.low
+    # df['change'] = candles.close - candles.open
 
     CustomScaler = FunctionTransformer(custom_scaler, kw_args={})
 
