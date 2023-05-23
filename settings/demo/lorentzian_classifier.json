@@ -17,11 +17,13 @@
           "method": "range_scale",
           "feature_range": [0, 100]
         },
-        "smoothed":{
+        "smoothed": {
           "method": "SMA",
           "window": 1
         },
-        "fillna": false
+        "filled": {
+          "method": "nan"
+        }
       }
     },
     "rsi9": {
@@ -35,7 +37,7 @@
           "method": "range_scale",
           "feature_range": [0, 100]
         },
-        "smoothed":{
+        "smoothed": {
           "method": "SMA",
           "window": 1
         },
@@ -48,12 +50,12 @@
         "window": 10,
         "window_smooth": 11
       },
-      "transform":{
+      "transform": {
         "rescaled": {
           "method": "minmax_scale",
           "feature_range": [0, 1]
         },
-        "smoothed":{
+        "smoothed": {
           "method": "SMA",
           "window": 1
         },
@@ -65,12 +67,12 @@
       "parameters": {
         "window": 20
       },
-      "transform":{
+      "transform": {
         "rescaled": {
           "method": "minmax_scale",
           "feature_range": [0, 1]
         },
-        "smoothed":{
+        "smoothed": {
           "method": "SMA",
           "window": 1
         },
@@ -84,12 +86,12 @@
         "rescaled": "range_scale",
         "fillna": false
       },
-      "transform":{
+      "transform": {
         "rescaled": {
           "method": "minmax_scale",
           "feature_range": [0, 1]
         },
-        "smoothed":{
+        "smoothed": {
           "method": "SMA",
           "window": 1
         },
