@@ -1,7 +1,7 @@
+import numpy as np  # np.recarray, append, delete, s_
 from typing import Union
 from inspect import signature
 from collections import namedtuple
-from numpy import recarray, append, delete, s_
 
 from trade.metadata import EntrySignal, ExitSignal
 
@@ -109,31 +109,31 @@ class TradingStrategy:
         # TODO: jugar con la cantidad de signals
         self.last_exit_signals = [None]
 
-    def fit(self, train_data: recarray, train_labels: recarray = None) -> None:
+    def fit(self, train_data: np.recarray, train_labels: np.recarray = None) -> None:
         self.train_data = train_data
         self.train_labels = train_labels
 
-    def update_data(self, new_data: recarray) -> None:
+    def update_data(self, new_data: np.recarray) -> None:
         # Define how the data should be updated. This new_data is only to update prediction
         # Compare if latest candlestick is the same. If true, update queue.
         if not self.is_new_data(new_data):
             return
         # Append new data to the train array then delete a release memory from oldest one
         new_rows = new_data.shape[0]
-        self.train_data = append(self.train_data, new_data, axis=0)
-        self.train_data = delete(
-            self.train_data, s_[:new_rows], axis=0).view(recarray)
+        self.train_data = np.append(self.train_data, new_data, axis=0)
+        self.train_data = np.delete(
+            self.train_data, np.s_[:new_rows], axis=0).view(np.recarray)
 
-    def generate_entry_signal(self, candle: recarray):
+    def generate_entry_signal(self, candle: np.recarray):
         # Define your entry signal generation logic on this method
-        return EntrySignal.NEUTRAL.value  # return neutral by default
+        return EntrySignal.NEUTRAL  # return neutral by default
 
     def validate_entry_signal(self, entry_signal: int):
         # Define your entry signal validation logic on this method
-        if entry_signal not in EntrySignal._value2member_map_:
+        if entry_signal not in EntrySignal:
             raise ValueError(f"{entry_signal=} not recognized")
 
-    def get_entry_signal(self, candle: recarray):
+    def get_entry_signal(self, candle: np.recarray):
         # Generate new signal and append it to the last signals queue.
         entry_signal = self.generate_entry_signal(candle)
         self.validate_entry_signal(entry_signal)
@@ -143,24 +143,24 @@ class TradingStrategy:
 
         # If last signals in queue are all the same, return equivalent trade signal.
         # If not, return neutral signal
-        if all(signal == EntrySignal.BUY.value for signal in self.last_entry_signals):
+        if all(signal == EntrySignal.BUY for signal in self.last_entry_signals):
             return EntrySignal.BUY
 
-        elif all(signal == EntrySignal.SELL.value for signal in self.last_entry_signals):
+        elif all(signal == EntrySignal.SELL for signal in self.last_entry_signals):
             return EntrySignal.SELL
 
         return EntrySignal.NEUTRAL
 
-    def generate_exit_signal(self, candle: recarray):
+    def generate_exit_signal(self, candle: np.recarray):
         # Define your entry signal generation logic on this method
-        return ExitSignal.HOLD.value  # return hold signal by default
+        return ExitSignal.HOLD  # return hold signal by default
 
     def validate_exit_signal(self, exit_signal: int):
         # Define your exit signal validation logic on this method
-        if exit_signal not in ExitSignal._value2member_map_:
+        if exit_signal not in ExitSignal:
             raise ValueError(f"{exit_signal=} not recognized")
 
-    def get_exit_signal(self, candle: recarray):
+    def get_exit_signal(self, candle: np.recarray):
         # Generate new signal and append it to the last signals queue.
         exit_signal = self.generate_exit_signal(candle)
         self.validate_exit_signal(exit_signal)
@@ -170,11 +170,11 @@ class TradingStrategy:
 
         # If last signals in queue are all the same, return equivalent trade signal.
         # If not, return neutral signal
-        if all(signal == ExitSignal.EXIT.value for signal in self.last_exit_signals):
+        if all(signal == ExitSignal.EXIT for signal in self.last_exit_signals):
             return ExitSignal.EXIT
         return ExitSignal.HOLD
 
-    def is_new_data(self, new_data: recarray) -> bool:
+    def is_new_data(self, new_data: np.recarray) -> bool:
         # TODO: improve this method
         if new_data.time[0] > self.train_data.time[-1]:
             return True
@@ -200,16 +200,16 @@ class EntryTradingStrategy(TradingStrategy):
     def __init__(self):
         super().__init__()
 
-    def generate_entry_signal(self, candle: recarray):
+    def generate_entry_signal(self, candle: np.recarray):
         # Define your entry signal generation logic on this method
-        return EntrySignal.NEUTRAL.value  # return neutral by default
+        return EntrySignal.NEUTRAL  # return neutral by default
 
     def validate_entry_signal(self, entry_signal: int):
         # Define your entry signal validation logic on this method
-        if entry_signal not in EntrySignal._value2member_map_:
+        if entry_signal not in EntrySignal:
             raise ValueError(f"{entry_signal=} not recognized")
 
-    def get_entry_signal(self, candle: recarray):
+    def get_entry_signal(self, candle: np.recarray):
         # Generate new signal and append it to the last signals queue.
         entry_signal = self.generate_entry_signal(candle)
         self.validate_entry_signal(entry_signal)
@@ -219,10 +219,10 @@ class EntryTradingStrategy(TradingStrategy):
 
         # If last signals in queue are all the same, return equivalent trade signal.
         # If not, return neutral signal
-        if all(signal == EntrySignal.BUY.value for signal in self.last_entry_signals):
+        if all(signal == EntrySignal.BUY for signal in self.last_entry_signals):
             return EntrySignal.BUY
 
-        elif all(signal == EntrySignal.SELL.value for signal in self.last_entry_signals):
+        elif all(signal == EntrySignal.SELL for signal in self.last_entry_signals):
             return EntrySignal.SELL
 
         return EntrySignal.NEUTRAL
@@ -232,16 +232,16 @@ class ExitTradingStrategy(TradingStrategy):
     def __init__(self):
         super().__init__()
 
-    def generate_exit_signal(self, candle: recarray):
+    def generate_exit_signal(self, candle: np.recarray):
         # Define your entry signal generation logic on this method
-        return ExitSignal.HOLD.value  # return hold signal by default
+        return ExitSignal.HOLD  # return hold signal by default
 
     def validate_exit_signal(self, exit_signal: int):
         # Define your exit signal validation logic on this method
-        if exit_signal not in ExitSignal._value2member_map_:
+        if exit_signal not in ExitSignal:
             raise ValueError(f"{exit_signal=} not recognized")
 
-    def get_exit_signal(self, candle: recarray):
+    def get_exit_signal(self, candle: np.recarray):
         # Generate new signal and append it to the last signals queue.
         exit_signal = self.generate_exit_signal(candle)
         self.validate_exit_signal(exit_signal)
@@ -251,7 +251,7 @@ class ExitTradingStrategy(TradingStrategy):
 
         # If last signals in queue are all the same, return equivalent trade signal.
         # If not, return neutral signal
-        if all(signal == ExitSignal.EXIT.value for signal in self.last_exit_signals):
+        if all(signal == ExitSignal.EXIT for signal in self.last_exit_signals):
             return ExitSignal.EXIT
         return ExitSignal.HOLD
 
@@ -267,7 +267,7 @@ class CompoundTradingStrategy(TradingStrategy):
             the default exit strategy of the superclass is used.
 
     Methods:
-        fit(train_data: recarray, train_labels: recarray = None)
+        fit(train_data: np.recarray, train_labels: np.recarray = None)
             Fits each of the entry strategies on the provided training data and labels.
         get_entry_signal() -> EntrySignal
             Returns a BUY, SELL, or NEUTRAL entry signal based on the signals generated
@@ -280,103 +280,215 @@ class CompoundTradingStrategy(TradingStrategy):
 
     def __init__(
         self,
-        entry_strategies: list[TradingStrategy],
-        exit_strategies: list[TradingStrategy] = None
+        entry_strategy: TradingStrategy = None,
+        exit_strategy: TradingStrategy = None
     ):
         super().__init__()
-        self.entry_strategies = entry_strategies
-        self.exit_strategies = exit_strategies
+        self.entry_strategy = entry_strategy
+        self.exit_strategy = exit_strategy
 
         # The minimum amount of bars is the maximum of all strategies
-        min_bars_entry = max(stgy.min_bars for stgy in entry_strategies)
-        min_bars_exit = max(stgy.min_bars for stgy in exit_strategies) \
-            if exit_strategies else 0
+        min_bars_entry = recursive_min_bars(entry_strategy)
+        min_bars_exit = recursive_min_bars(exit_strategy)
         self.min_bars = max(min_bars_entry, min_bars_exit)
 
         # Set all strategies to compound mode
-        for stgy in entry_strategies:
-            stgy.compound_mode = True
+        recursive_set_compound_mode(entry_strategy)
+        recursive_set_compound_mode(exit_strategy)
 
-        if exit_strategies:
-            for stgy in exit_strategies:
-                stgy.compound_mode = True
-
-    def fit(self, train_data: recarray, train_labels: recarray = None):
+    def fit(self, train_data: np.recarray, train_labels: np.recarray = None):
         """Fits each of the strategies on the provided training data and labels.
 
         Args:
-            train_data (recarray): _description_
-            train_labels (recarray, optional): _description_. Defaults to None.
+            train_data (np.recarray): _description_
+            train_labels (np.recarray, optional): _description_. Defaults to None.
         """
         for stgy in self.entry_strategies:
             stgy.fit(train_data, train_labels)
 
     def get_entry_signal(self):
-        entry_signals = [stgy.get_entry_signal()
-                         for stgy in self.entry_strategies]
+        if self.exit_strategy is None:
+            raise ValueError("No EntryStrategy was set")
+        return recursive_get_entry_signal(self.entry_strategy)
 
-        # Signals should be either all BUY or all SELL in a compound strategy
-        if all(signal == EntrySignal.BUY for signal in entry_signals):
+    def get_exit_signal(self):
+        if self.exit_strategy is None:
+            raise ValueError("No ExitStrategy was set")
+            # return ExitSignal.HOLD
+        return recursive_get_exit_signal(self.exit_strategy)
+
+
+def Priority(*args):
+    return ('priority', list(args))
+
+
+def And(*args):
+    return ('and', list(args))
+
+
+def Or(*args):
+    return ('or', list(args))
+
+
+def recursive_set_compound_mode(tree):
+    if isinstance(tree, TradingStrategy):  # the node is a strategy
+        tree.compound_mode = True
+
+    for stgy in tree[1]:
+        recursive_set_compound_mode(stgy)
+
+
+def recursive_min_bars(tree):
+    if isinstance(tree, TradingStrategy):  # the node is a strategy
+        return tree.min_bars
+    # Return the maximum of all min_bars downstream
+    return max(recursive_min_bars(stgy) for stgy in tree[1])
+
+
+def recursive_get_entry_signal(tree):
+    if isinstance(tree, TradingStrategy):  # the node is a strategy
+        return tree.get_entry_signal()
+
+    operator, strategies = tree
+
+    # The first strategy to get a entry signal
+    if operator == 'priority':
+        for stgy in strategies:
+            signal = recursive_get_entry_signal(stgy)
+            if signal != EntrySignal.NEUTRAL:
+                return signal
+        return EntrySignal.NEUTRAL
+
+    signals = [recursive_get_entry_signal(stgy) for stgy in strategies]
+
+    # Any of the signals could be BUY or SELL.
+    if operator == 'or':
+        if all(signal in (EntrySignal.BUY, EntrySignal.NEUTRAL) for signal in signals):
             return EntrySignal.BUY
-        elif all(signal == EntrySignal.SELL for signal in entry_signals):
+        elif all(signal in (EntrySignal.SELL, EntrySignal.NEUTRAL) for signal in signals):
             return EntrySignal.SELL
         else:
             return EntrySignal.NEUTRAL
 
-    def get_exit_signal(self):
-        if not self.exit_strategies:
-            return super().get_exit_signal()
+    # Signals should be either all BUY or all SELL
+    elif operator == 'and':
+        if all(signal == EntrySignal.BUY for signal in signals):
+            return EntrySignal.BUY
+        elif all(signal == EntrySignal.SELL for signal in signals):
+            return EntrySignal.SELL
+        else:
+            return EntrySignal.NEUTRAL
 
-        exit_signals = [stgy.get_exit_signal()
-                        for stgy in self.exit_strategies]
 
-        # Signals should be either all BUY or all SELL in a compound strategy
-        if all(signal == ExitSignal.EXIT for signal in exit_signals):
+def recursive_get_exit_signal(tree):
+    if isinstance(tree, TradingStrategy):  # the node is a strategy
+        return tree.get_exit_signal()
+
+    operator, strategies = tree
+
+    # The first strategy to get a entry signal
+    if operator == 'priority':
+        for stgy in strategies:
+            signal = recursive_get_exit_signal(stgy)
+            if signal != ExitSignal.HOLD:
+                return signal
+        return ExitSignal.HOLD
+
+    signals = [recursive_get_exit_signal(stgy) for stgy in strategies]
+
+    # Any of the signals could be BUY or SELL.
+    if operator == 'or':
+        if any(signal == ExitSignal.EXIT for signal in signals):
             return ExitSignal.EXIT
         else:
-            return ExitSignal.NEUTRAL
+            return ExitSignal.HOLD
 
-        # Detect crossover
-        # if mav_short > mav_long:
-        #     return 1  # buy
-        # elif mav_short < mav_long:
-        #     return -1  # sell
-        # else:
-        #     return 0  # neutral
+    # Signals should be either all BUY or all SELL
+    elif operator == 'and':
+        if all(signal == ExitSignal.EXIT for signal in signals):
+            return ExitSignal.EXIT
+        else:
+            return ExitSignal.HOLD
 
-        # # Function to update trailing stop if needed
-        # def update_trailing_stop(order, trailing_stop_pips, pip_size):
-        #     # Convert trailing_stop_pips into pips
-        #     trailing_stop_pips = trailing_stop_pips * pip_size
-        #     # Determine if Red or Green
-        #     # A Green Position will have a take_profit > stop_loss
-        #     if order[12] > order[11]:
-        #         # If Green, new_stop_loss = current_price - trailing_stop_pips
-        #         new_stop_loss = order[13] - trailing_stop_pips
-        #         # Test to see if new_stop_loss > current_stop_loss
-        #         if new_stop_loss > order[11]:
-        #             print("Update Stop Loss")
-        #             # Create updated values for order
-        #             order_number = order[0]
-        #             symbol = order[16]
-        #             # New take_profit will be the difference between new_stop_loss and old_stop_loss added to take profit
-        #             new_take_profit = order[12] + new_stop_loss - order[11]
-        #             print(new_take_profit)
-        #             # Send order to modify_position
-        #             broker.modify_position(order_number=order_number, symbol=symbol, new_stop_loss=new_stop_loss,
-        #                                    new_take_profit=new_take_profit)
-        #     elif order[12] < order[11]:
-        #         # If Red, new_stop_loss = current_price + trailing_stop_pips
-        #         new_stop_loss = order[13] + trailing_stop_pips
-        #         # Test to see if new_stop_loss < current_stop_loss
-        #         if new_stop_loss < order[11]:
-        #             print("Update Stop Loss")
-        #             # Create updated values for order
-        #             order_number = order[0]
-        #             symbol = order[16]
-        #             # New take_profit will be the difference between new_stop_loss and old_stop_loss subtracted from old take_profit
-        #             new_take_profit = order[12] - new_stop_loss + order[11]
-        #             print(new_take_profit)
-        #             # Send order to modify_position
-        #             broker.modify_position(order_number=order_number, symbol=symbol, new_stop_loss=new_stop_loss,
-        #                                    new_take_profit=new_take_profit)
+
+def recursive_batch_signals(tree):
+    if isinstance(tree, TradingStrategy):  # the node is a strategy
+        return tree.batch_signals()
+
+    operator, strategies = tree
+
+    # Calculate all buy/sell signals from the tree logic
+    signals = [recursive_batch_signals(stgy) for stgy in strategies]
+    batch_buy = np.array([signal.buy for signal in signals])
+    batch_sell = np.array([signal.sell for signal in signals])
+
+    if operator == 'priority':
+        # Calculate priority number where the signal was triggered
+        buy_argmax = np.argmax(batch_buy, axis=0)
+        sell_argmax = np.argmax(batch_sell, axis=0)
+
+        # if buy signal has greater priority than sells, buy signal remains
+        buy_signals = buy_argmax < sell_argmax
+        sell_signals = buy_argmax > sell_argmax
+
+        # Sometimes no signal is generated. Above code has to be corrected by below
+        zero_buy = np.all(~batch_buy, axis=0)
+        zero_sell = np.all(~batch_sell, axis=0)
+
+        buy_signals[zero_sell & ~zero_buy] = True
+        sell_signals[zero_buy & ~zero_sell] = True
+
+    elif operator == 'or':
+        buy_signals = np.any(batch_buy, axis=0)
+        sell_signals = np.any(batch_sell, axis=0)
+
+    elif operator == 'and':
+        buy_signals = np.all(batch_buy, axis=0)
+        sell_signals = np.all(batch_sell, axis=0)
+
+    return np.rec.array((buy_signals, sell_signals), dtype=[('buy', bool), ('sell', bool)])
+
+    # Detect crossover
+    # if mav_short > mav_long:
+    #     return 1  # buy
+    # elif mav_short < mav_long:
+    #     return -1  # sell
+    # else:
+    #     return 0  # neutral
+
+    # # Function to update trailing stop if needed
+    # def update_trailing_stop(order, trailing_stop_pips, pip_size):
+    #     # Convert trailing_stop_pips into pips
+    #     trailing_stop_pips = trailing_stop_pips * pip_size
+    #     # Determine if Red or Green
+    #     # A Green Position will have a take_profit > stop_loss
+    #     if order[12] > order[11]:
+    #         # If Green, new_stop_loss = current_price - trailing_stop_pips
+    #         new_stop_loss = order[13] - trailing_stop_pips
+    #         # Test to see if new_stop_loss > current_stop_loss
+    #         if new_stop_loss > order[11]:
+    #             print("Update Stop Loss")
+    #             # Create updated values for order
+    #             order_number = order[0]
+    #             symbol = order[16]
+    #             # New take_profit will be the difference between new_stop_loss and old_stop_loss added to take profit
+    #             new_take_profit = order[12] + new_stop_loss - order[11]
+    #             print(new_take_profit)
+    #             # Send order to modify_position
+    #             broker.modify_position(order_number=order_number, symbol=symbol, new_stop_loss=new_stop_loss,
+    #                                    new_take_profit=new_take_profit)
+    #     elif order[12] < order[11]:
+    #         # If Red, new_stop_loss = current_price + trailing_stop_pips
+    #         new_stop_loss = order[13] + trailing_stop_pips
+    #         # Test to see if new_stop_loss < current_stop_loss
+    #         if new_stop_loss < order[11]:
+    #             print("Update Stop Loss")
+    #             # Create updated values for order
+    #             order_number = order[0]
+    #             symbol = order[16]
+    #             # New take_profit will be the difference between new_stop_loss and old_stop_loss subtracted from old take_profit
+    #             new_take_profit = order[12] - new_stop_loss + order[11]
+    #             print(new_take_profit)
+    #             # Send order to modify_position
+    #             broker.modify_position(order_number=order_number, symbol=symbol, new_stop_loss=new_stop_loss,
+    #                                    new_take_profit=new_take_profit)
