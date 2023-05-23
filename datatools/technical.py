@@ -13,6 +13,12 @@ def crossingover(arr1: np.ndarray, arr2: np.ndarray, delta: float = 0):
     Returns:
         bool: Signal if the arr1 crosses over arr2
     """
+    if isinstance(arr1, list):
+        arr1 = np.array(arr1)
+
+    if isinstance(arr2, list):
+        arr2 = np.array(arr2)
+
     # Find the points where arr1 crosses over arr2
     cross_points = np.logical_and(
         arr1[:-1] <= arr2[:-1] + delta,  # below condition
@@ -39,6 +45,12 @@ def crossingunder(arr1: np.ndarray, arr2: np.ndarray, delta: float = 0):
     Returns:
         bool: True if the arr1 crosses under arr2
     """
+    if isinstance(arr1, list):
+        arr1 = np.array(arr1)
+
+    if isinstance(arr2, list):
+        arr2 = np.array(arr2)
+
     # Find the points where arr1 crosses over arr2
     cross_points = np.logical_and(
         arr1[:-1] >= arr2[:-1] + delta,  # upper condition
@@ -66,7 +78,14 @@ def above(arr1: np.ndarray, arr2: np.ndarray, delta: float = 0):
     Returns:
         bool: True if arr1 is currently above arr2 and was below or equal to it on the previous time step.
     """
+    if isinstance(arr1, list):
+        arr1 = np.array(arr1)
+
+    if isinstance(arr2, list):
+        arr2 = np.array(arr2)
+
     return np.where(arr1 > arr2 + delta, True, False)
+
 
 def below(arr1: np.ndarray, arr2: np.ndarray, delta: float = 0):
     """Check if the value of arr1 is currently greater than the final value of arr2,
@@ -81,13 +100,20 @@ def below(arr1: np.ndarray, arr2: np.ndarray, delta: float = 0):
     Returns:
         bool: True if arr1 is currently above arr2 and was below or equal to it on the previous time step.
     """
+    if isinstance(arr1, list):
+        arr1 = np.array(arr1)
+
+    if isinstance(arr2, list):
+        arr2 = np.array(arr2)
+
     return np.where(arr1 < arr2 + delta, True, False)
 
+
 def onband(
-        arr1: np.ndarray, 
-        arr2: np.ndarray, 
-        band: tuple[float, float] = (0, 0)
-    ) -> np.ndarray:
+    arr1: np.ndarray,
+    arr2: np.ndarray,
+    band: tuple[float, float] = (0, 0)
+) -> np.ndarray:
     """Check if the value of arr1 is currently greater than the final value of arr2,
     and if the value of arr1 on the previous time step was less than or equal to
     the value of arr2.
@@ -100,8 +126,13 @@ def onband(
     Returns:
         bool: True if arr1 is currently above arr2 and was below or equal to it on the previous time step.
     """
-    result = np.logical_and(
+    if isinstance(arr1, list):
+        arr1 = np.array(arr1)
+
+    if isinstance(arr2, list):
+        arr2 = np.array(arr2)
+
+    return np.logical_and(
         arr1 <= arr2 + band[1],
         arr1 >= arr2 + band[0],
     )
-    return result
