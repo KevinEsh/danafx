@@ -173,11 +173,11 @@ class DualNadarayaKernelStrategy(TradingStrategy):
 
         # Detect tendency and return signal
         if crossingover(line_rbfk, line_rqk, self._neutral_band[1])[-1]:
-            return EntrySignal.BUY.value
+            return EntrySignal.BUY
         elif crossingunder(line_rbfk, line_rqk, self._neutral_band[0])[-1]:
-            return EntrySignal.SELL.value
+            return EntrySignal.SELL
         else:
-            return EntrySignal.NEUTRAL.value
+            return EntrySignal.NEUTRAL
 
     def batch_signals(self):
         # Precalculate RQK & RBFK. This will save computational time
