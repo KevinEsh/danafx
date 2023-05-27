@@ -1,9 +1,11 @@
+from abc import ABC, abstractmethod
 import numpy as np  # np.recarray, append, delete, s_
 from typing import Union
 from inspect import signature
 from collections import namedtuple
 
 from trade.metadata import EntrySignal, ExitSignal
+from datatools.custom import addpop_recarrays
 
 OHLCbounds = ("open", "high", "low", "close")
 
@@ -95,6 +97,48 @@ class Hyperparameter(
         elif self.value_type in ["categoric", "boolean"] and value not in self.bounds:
             raise ValueError(
                 f"Hyperparameter {self.name} should be between {self.bounds}. Given {value}")
+
+
+class AbstractStrategy(ABC):
+    def __init__(self) -> None:
+        super().__init__()
+        self.min_bars = None
+        self.position = None
+        self.train_data = None
+        self.train_labels = None
+        self.compound_mode = False
+
+    def fit(self, train_data: np.recarray, train_labels: np.recarray = None) -> None:
+        self.train_data = train_data
+        self.train_labels = train_labels
+
+    def is_new_data(self, new_data: np.recarray) -> bool:
+        # TODO: improve this method
+        if new_data.time[0] > self.train_data.time[-1]:
+            return True
+        return False
+
+    def update_data(self, new_data: np.recarray) -> None:
+        # Define how the data should be updated. This new_data is only to update prediction
+
+        # Append new data to the train array then delete a release memory from oldest one
+        self.train_data = addpop_recarrays(self.train_data, new_data)
+        #TODO: self.train_labels = addpop(self.train_labels, new_labels)
+
+    def get_params(self):
+        init_params = signature(self.__init__).parameters
+        params = {}
+        for name in init_params.keys():
+            if name == "self":
+                continue
+            params[name] = getattr(self, name)
+        return params
+
+    def __repr__(self):
+        params = self.get_params()
+        str_params = ", ".join(
+            f"{name}={value:.3g}" for name, value in params.items())
+        return f"{self.__class__.__name__}({str_params})"
 
 
 class TradingStrategy:
@@ -199,6 +243,8 @@ class TradingStrategy:
 class EntryTradingStrategy(TradingStrategy):
     def __init__(self):
         super().__init__()
+        # TODO: jugar con la cantidad de signals
+        self.last_entry_signals = [None]
 
     def generate_entry_signal(self, candle: np.recarray):
         # Define your entry signal generation logic on this method
@@ -231,6 +277,7 @@ class EntryTradingStrategy(TradingStrategy):
 class ExitTradingStrategy(TradingStrategy):
     def __init__(self):
         super().__init__()
+        self.last_exit_signals = [None]
 
     def generate_exit_signal(self, candle: np.recarray):
         # Define your entry signal generation logic on this method
@@ -492,3 +539,16 @@ def recursive_batch_signals(tree):
     #             # Send order to modify_position
     #             broker.modify_position(order_number=order_number, symbol=symbol, new_stop_loss=new_stop_loss,
     #                                    new_take_profit=new_take_profit)
+
+
+class TrailingStopStrategy(AbstractStrategy):
+    def __init__(self):
+        super().__init__()
+
+    @abstractmethod
+    def calculate_stop_level(self, candle) -> float:
+        ...
+
+    @abstractmethod
+    def calculate_take_level(self, candle) -> float:
+        ...
