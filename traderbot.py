@@ -148,19 +148,27 @@ if __name__ == "__main__":
     # strategy = DualRmaStrategy(5, 200, neutral_band=(-0.0004, 0.0004), inverse=True)
     # strategy = RsiStrategy(14, (0, 23), (70, 100), mode="outband")
     # strategy = TrendlineBreakStrategy(window=5, alpha=1.856, offset=-1)
+    # strategy = DualNadarayaKernelStrategy(
+    #     window_rqk=9,
+    #     window_rbfk=9 - 1,
+    #     alpha_rq=1,
+    #     lag=1,
+    #     n_bars=20,
+    #     neutral_band=(-0.000028, 0.000028),
+    # )
     strategy = DualNadarayaKernelStrategy(
-        window_rqk=9,
-        window_rbfk=9 - 1,
-        alpha_rq=1,
-        lag=1,
-        n_bars=20,
-        neutral_band=(-0.000028, 0.000028),
+        window_rqk=6,
+        window_rbfk=6 - 3,
+        alpha_rq=100,
+        n_bars=25,
+        lag=0,
+        neutral_band=(-0.00006, 0.00006),
     )
 
     risk_params = {
         "pips": 5,
-        "risk_tolerance": 0.01,
-        "rr_ratio": 2,
+        "risk_tolerance": 0.05,
+        "rr_ratio": 1.1,
     }
 
     trader = SingleTraderBot(symbol, "M3", risk_params, 5)
