@@ -67,6 +67,8 @@ def get_stable_min_bars(indicator: str, window: int) -> int:
         return int((100. * window - 120.) ** (1./1.479))
     elif indicator == "EMA":
         return int((11.24 * window + 7.26) ** (1./1.2))
+    elif indicator == "ATR":  # TODO: ATR uses EMA, check if below is true
+        return int((11.24 * window + 7.26) ** (1./1.2)) + 1
     elif indicator == "ADX":
         return int((138.2 * window - 155.55) ** (1./1.53))
     elif indicator == "RQK":
