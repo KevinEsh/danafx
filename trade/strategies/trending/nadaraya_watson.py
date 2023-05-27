@@ -108,7 +108,8 @@ class DualNadarayaKernelStrategy(TradingStrategy):
         train_data: CandleLike,
         train_labels: ndarray = None
     ) -> None:
-        super().fit(train_data, train_labels)
+        if not self.compound_mode:
+            super().fit(train_data, train_labels)
 
         # Precalculate RQK & RBFK. This will save computational time
         self._rqk_queue = RQK(train_data.close, self._window_rqk, self._alpha_rq,
@@ -152,7 +153,7 @@ class DualNadarayaKernelStrategy(TradingStrategy):
     def generate_entry_signal(self, candle: CandleLike) -> int:
         # If lag = 0 that means we need to calculate indicators with current candle
         if self._lag == 0:
-            batch_rqk = addpop(self._batch_rqk.close, candle.close)
+            batch_rqk = addpop(self._batch_rqk.close, candle.close)  # TODO: achis? esto borra datos del batch?
             batch_rbfk = addpop(self._batch_rbfk.close, candle.close)
 
             # Calculate indicator for current candle
