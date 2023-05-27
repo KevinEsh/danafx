@@ -57,6 +57,15 @@ def addpop(arr: np.recarray, value: Number) -> np.ndarray:
     return np.delete(arr, 0)
 
 
+def append_recarrays(arrays: Tuple[np.recarray]) -> np.recarray:
+    return stack_arrays(arrays, usemask=False, asrecarray=True)
+
+
+def addpop_recarrays(arr1: np.recarray, arr2: np.recarray) -> np.recarray:
+    stacked_recarray = append_recarrays((arr1, arr2))
+    return np.delete(stacked_recarray, np.s_[:arr2.shape[0]])
+
+
 def concat_recarrays(
     arr1: np.recarray,
     arr2: np.recarray,
