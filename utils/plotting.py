@@ -1,5 +1,6 @@
 import numpy as np
 import plotly.graph_objects as go
+import pandas as pd
 
 from trade.metadata import CandleLike
 from datatools.technical import above, below, onband
@@ -103,7 +104,7 @@ def add_lines(
             y=series,
             name=source,
             mode="lines",
-            line={'color': 'red', 'width': 1},
+            line={'width': 1},
             legendgroup=legendgroup,
             legendgrouptitle_text=legendgroup,
         )
@@ -126,3 +127,37 @@ def add_lines(
             x=0,
         )
     )
+
+
+def add_session(fig, candles, session_hours: tuple[int, int] = (22, 10)):
+    # Create a list to hold our shapes
+    shapes = []
+
+    # Define the hours of the trading sessions
+    # london_session_start = 8
+    # london_session_end = 17
+
+    # new_york_session_start = 14
+    # new_york_session_end = 23
+
+    # Iterate over the dates in the dataframe
+    for date in pd.date_range(candles['time'].dt.date.min(), candles['time'].dt.date.max()):
+        if date.dayofweek in (1, 2, 3, 4, 5, 7):  # Only apply to weekdays
+            # Add the New York session
+            shapes.append(
+                dict(
+                    type="rect",
+                    xref="x",
+                    yref="paper",
+                    x0=date + pd.Timedelta(hours=session_hours[0]),
+                    y0=0,
+                    x1=date + pd.Timedelta(hours=session_hours[1]),
+                    y1=1,
+                    fillcolor="Red",
+                    opacity=0.3,
+                    layer="below",
+                    line_width=0,
+                )
+            )
+
+    fig.update_layout(shapes=shapes)
