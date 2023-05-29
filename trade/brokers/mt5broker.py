@@ -1,4 +1,5 @@
 import MetaTrader5 as mt5
+from typing import Union
 from pytz import timezone
 from numpy import recarray
 from datetime import datetime
@@ -7,6 +8,16 @@ from pandas import DataFrame, to_datetime
 
 from trade.brokers.abstract import BrokerSession
 from trade.metadata import OrderTypes, TimeFrames, InverseOrderTypes
+
+
+def check_symbol(symbol):
+    if len(symbol) != 6:
+        raise ValueError(f"Invalid symbol format. Expected 'XXXYYY', got '{symbol}'")
+
+
+def round_price(price, symbol):
+    digits = mt5.symbol_info(symbol).digits
+    return round(price, digits)
 
 
 @dataclass
@@ -379,32 +390,59 @@ class Mt5Session(BrokerSession):
 
         return exchange_rate
 
-    def get_pip_unit(self, symbol: str) -> float:
-        """Calculate the value of a single pip for the given currency pair
+    def get_exchange_rate_2(self, symbol: str) -> float:
+        base_currency = symbol[3:]
+        if base_currency == self.account_info.currency:
+            return 1.0
+
+        exchange_symbol = base_currency + self.account_info.currency  # standard forex notation: base + quote
+        try:
+            tick = mt5.symbol_info_tick(exchange_symbol)
+            if not tick or tick.ask == 0 or tick.bid == 0:
+                # if the direct pair doesn't exist or if bid/ask is not available, try the inverse
+                exchange_symbol = self.account_info.currency + base_currency
+                tick = mt5.symbol_info_tick(exchange_symbol)
+                if tick and tick.ask != 0 and tick.bid != 0:
+                    return (tick.bid + tick.ask) / 2
+            else:
+                return 2 / (tick.bid + tick.ask)
+
+        except Exception as e:
+            raise ValueError(f"An error occurred while getting exchange rate: {e}")
+
+        raise ValueError(f"Could not find any exchange rate for {base_currency} with {self.account_info.currency}")
+
+    def get_pipette_unit(self, symbol: str) -> float:
+        """Calculate the value of a single pip for the given currency pair.
 
         Args:
-            symbol (str): Currency pair such as GBPUSD, USDJPY, etc.
+            symbol (str): Currency pair in the format of 'XXXYYY', such as 'GBPUSD', 'USDJPY', etc.
+                        'XXX' is the base currency and 'YYY' is the quote currency.
 
         Returns:
-            float: the value of a pip in that currency pair
-        """
-        base_currency = symbol[3:]
-        if base_currency == "JPY":
-            pip_unit = 0.01
-        else:
-            pip_unit = 0.0001  # For EUR/USD
+            float: the value of a pip in that currency pair. For JPY pairs, it's usually 0.001. For most
+                other pairs like EUR/USD, it's 0.00001.
 
-        return pip_unit
+        Raises:
+            ValueError: If symbol is not of the format 'XXXYYY'.
+        """
+        check_symbol(symbol)
+
+        base_currency = symbol[3:].upper()
+        if base_currency == "JPY":
+            return 0.001
+        else:
+            return 0.00001
 
     def calculate_sltp(
         self,
         symbol: str,
         order_type: str,
         price: float,
-        pips: float,
+        pipettes: float,
         rr_ratio: float,
     ) -> tuple[float]:
-        pip_amount = self.get_pip_unit(symbol) * pips
+        pip_amount = self.get_pipette_unit(symbol) * pipettes
 
         if order_type == "buy":
             take_profit = price + rr_ratio * pip_amount
@@ -482,7 +520,7 @@ class Mt5Session(BrokerSession):
         self,
         symbol: str,
         order_type: str,
-        pips: int,
+        pipettes: int,
         risk_tolerance: float,
         rr_ratio: float,
     ) -> tuple[float]:
@@ -505,7 +543,7 @@ class Mt5Session(BrokerSession):
         max_risk_amount = balance * risk_tolerance
 
         # Calculate the amount in pips to be risked
-        pip_amount = self.get_pip_unit(symbol) * pips
+        pip_amount = self.get_pipette_unit(symbol) * pipettes
 
         # Calculate the proper lot_size based on the risked_amount and the pip_amount
         exchange_rate = self.get_exchange_rate(symbol)
@@ -536,6 +574,83 @@ class Mt5Session(BrokerSession):
             stop_loss = 0.0
 
         return open_price, lot_size, stop_loss, take_profit
+
+    def get_open_price(self, symbol: str, order_type: Union[OrderTypes, str]) -> float:
+        """
+        Calculate the open price for a market position using MetaTrader5 python package.
+
+        Args:
+            symbol (str): The symbol of the currency pair to trade.
+            order_type (Union[OrderTypes, str]): The type of the order, either 'BUY' or 'SELL'.
+
+        Returns:
+            float: The open price for the given order type.
+
+        Raises:
+            ValueError: If the order_type is not a valid OrderTypes value.
+        """
+        symbol_info = mt5.symbol_info(symbol)
+
+        if isinstance(order_type, str):
+            order_type = OrderTypes[order_type]
+
+        if order_type == OrderTypes.BUY:
+            # Ask is the minimum price that a seller is willing to take for that same asset.
+            return symbol_info.ask
+        elif order_type == OrderTypes.SELL:
+            # Bid is the maximum price that a buyer is willing to pay for an asset.
+            return symbol_info.bid
+        else:
+            raise ValueError(f"Invalid order type: {order_type}")
+
+    def bound_lot(self, symbol: str,  lot_size: float) -> float:
+        symbol_info = mt5.symbol_info(symbol)
+
+        # Delimit lot size by the min and max allowed amount
+        if lot_size < symbol_info.volume_min:
+            return symbol_info.volume_min
+        elif lot_size > symbol_info.volume_max:
+            return symbol_info.volume_max
+        else:
+            step = symbol_info.volume_step
+            return step * round(lot_size / step)
+
+    def calc_adjusted_lot_size(
+        self,
+        symbol: str,
+        open_price: float,
+        stop_loss: float,
+        risk_pct: float,
+    ) -> tuple[float]:
+        """Calculates the price, lot size, stop loss and take profit based on the
+        account balance, risk tolerance, pips until hit a stop loss, and risk reward ratio
+
+        Args:
+            symbol (str): Currency pair ticker
+            order_type (str): Type could be "buy" or "sell"
+            pips (int): The distance in pips between the entry price and the stop loss price.
+            risk_tolerance (float): The percentage of account balance that can be risked on a single trade.
+            rr_ratio (float): Risk/Reward radio between stop loss & take profit thresholds
+
+        Returns:
+            tuple[float]: price, lot_size, stop_loss, take_profit
+        """
+        # Calculate the maximum amount that can be risked on a single trade
+        risked_balance = mt5.account_info().balance * risk_pct
+
+        # Calculate the amount in pips to be risked
+        pippete_unit = self.get_pipette_unit(symbol)
+        # open_price = self.get_open_price(symbol, order_type)
+        # print(abs(open_price - stop_loss), abs(open_price - stop_loss) / pippete_unit)
+        pip_amount = pippete_unit * round(abs(open_price - stop_loss) / pippete_unit)
+
+        # Calculate the proper lot_size based on the risked_balance and the pip_amount
+        exchange_rate = self.get_exchange_rate(symbol)
+        lot_size = risked_balance * exchange_rate / (100_000. * pip_amount)
+
+        # print(f"{risked_balance=}, {pippete_unit=}, {pip_amount=}, {exchange_rate=}, {lot_size=}")
+
+        return open_price, self.bound_lot(symbol, lot_size)
 
 
 if __name__ == "__main__":
