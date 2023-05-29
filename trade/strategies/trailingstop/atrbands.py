@@ -97,7 +97,7 @@ class AtrBandTrailingStop(TrailingStopStrategy):
         if not self.compound_mode:
             super().fit(train_data, train_labels)
 
-        self._batch = self.train_data[-self.min_bars:]
+        self._batch = train_data[-self.min_bars:]
         self._atrs = ATR(
             self._batch.high,
             self._batch.low,
@@ -121,7 +121,7 @@ class AtrBandTrailingStop(TrailingStopStrategy):
 
     def calc_risk_levels(self, price: float, rr_ratio: float, risk_pct: float):
 
-        return lot_size, stop_loss, take_profit
+        return stop_loss, take_profit
 
     def calculate_stop_level(self, candle: CandleLike) -> float:
         # Check if the strategy has been fitted
