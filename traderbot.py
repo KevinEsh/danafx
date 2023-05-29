@@ -160,18 +160,18 @@ if __name__ == "__main__":
         window_rqk=6,
         window_rbfk=6 - 3,
         alpha_rq=100,
-        n_bars=25,
+        n_bars=20,
         lag=0,
-        neutral_band=(-0.00006, 0.00006),
+        neutral_band=(-0.000055, 0.000055),
     )
 
     risk_params = {
-        "pips": 5,
-        "risk_tolerance": 0.05,
+        "pipettes": 15,
+        "risk_tolerance": 0.01,
         "rr_ratio": 1.1,
     }
 
-    trader = SingleTraderBot(symbol, "M3", risk_params, 5)
+    trader = SingleTraderBot(symbol, "M1", risk_params, 5)
     trader.set_broker(broker)
     trader.set_strategy(strategy)
 
