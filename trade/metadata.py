@@ -1,10 +1,13 @@
 import MetaTrader5 as mt5
 from enum import Enum
-from numpy import recarray, ndarray
+from numpy import recarray
 from typing import Union
 from pandas import Series
 
-CandleLike = Union[Series, recarray, ndarray]
+CandleLike = Union[Series, recarray]
+TickLike = Union[Series, recarray]
+TradePosition = mt5.TradePosition
+TradeOrder = mt5.TradeOrder
 
 
 class AssetState(Enum):
