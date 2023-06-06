@@ -126,7 +126,7 @@ class BrokerSession(ABC):
         ...
 
     @abstractmethod
-    def calc_adjusted_lot_size(
+    def calculate_lot_size(
         symbol: str,
         open_price: float,
         stop_loss: float,
