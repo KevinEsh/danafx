@@ -354,8 +354,8 @@ class Mt5Session(BrokerSession):
             "action": mt5.TRADE_ACTION_SLTP,
             "position": position.ticket,
             "symbol": position.symbol,
-            "sl": new_stop_loss,
-            "tp": new_take_profit,
+            # "sl": new_stop_loss,
+            # "tp": new_take_profit,
         }
 
         # Optional parameters
@@ -363,7 +363,6 @@ class Mt5Session(BrokerSession):
             request["sl"] = round(new_stop_loss, price_digits)
         if new_take_profit is not None:
             request["tp"] = round(new_take_profit, price_digits)
-
         # Send order to MT5
         order_result = mt5.order_send(request)
         check_order_sent(order_result, "modifying")
@@ -409,11 +408,11 @@ class Mt5Session(BrokerSession):
         """
         if symbol is None:
             return mt5.positions_total()
-        return len(self.positions_get(symbol=symbol))
+        return len(mt5.positions_get(symbol=symbol))
 
     def get_orders(
         self,
-        symbol: str
+        symbol: str = None,
     ) -> tuple[mt5.TradeOrder]:
         """Retrieves the current open trading orders.
 
@@ -450,7 +449,7 @@ class Mt5Session(BrokerSession):
         """
         if symbol is None:
             return mt5.orders_total()
-        return len(self.orders_get(symbol=symbol))
+        return len(mt5.orders_get(symbol=symbol))
 
     def get_ticks(
         self,
@@ -482,14 +481,12 @@ class Mt5Session(BrokerSession):
 
         # Transform Tuple into a DataFrame
         df_ticks = DataFrame(ticks)
+        df_ticks.set_index("time_msc", inplace=True)
 
         # Convert number format of the date into date format
         if format_time:
-            cst = timezone(tzone)
-            df_ticks["time"] = to_datetime(df_ticks["time_msc"], unit="ms", utc=True)
-            df_ticks["time"] = df_ticks["time"].dt.tz_convert(cst)
-
-        df_ticks.set_index("time", inplace=True)
+            df_ticks.index = to_datetime(df_ticks.index, unit="ms", utc=True)
+            df_ticks.index = df_ticks.index.tz_localize('Etc/GMT-3').tz_convert(tzone)
 
         return df_ticks if as_dataframe else df_ticks.to_records()
 
@@ -525,14 +522,12 @@ class Mt5Session(BrokerSession):
 
         # Transform Tuple into a DataFrame
         df_rates = DataFrame(rates)
+        df_rates.set_index("time", inplace=True)
 
         # Convert number format of the date into date format
         if format_time:
-            cst = timezone(tzone)
-            df_rates['time'] = to_datetime(df_rates['time'], unit='s', utc=True)
-            df_rates['time'] = df_rates['time'].dt.tz_convert(cst)
-
-        df_rates.set_index("time", inplace=True)
+            df_rates.index = to_datetime(df_rates.index, unit='s')
+            df_rates.index = df_rates.index.tz_localize('Etc/GMT-3').tz_convert(tzone)
 
         return df_rates if as_dataframe else df_rates.to_records()
 
@@ -642,7 +637,7 @@ class Mt5Session(BrokerSession):
         else:
             raise ValueError(f"Invalid order type: {order_type}")
 
-    def calc_adjusted_lot_size(
+    def calculate_lot_size(
         self,
         symbol: str,
         open_price: float,
