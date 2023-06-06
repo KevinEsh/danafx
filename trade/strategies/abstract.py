@@ -4,7 +4,7 @@ from typing import Union
 from inspect import signature
 from collections import namedtuple
 
-from trade.metadata import EntrySignal, ExitSignal
+from trade.metadata import EntrySignal, ExitSignal, TradePosition, CandleLike
 from datatools.custom import addpop_recarrays
 
 OHLCbounds = ("open", "high", "low", "close")
@@ -546,9 +546,18 @@ class TrailingStopStrategy(AbstractStrategy):
         super().__init__()
 
     @abstractmethod
-    def calculate_stop_level(self, candle) -> float:
+    def calculate_stop_level(
+        self,
+        candle: CandleLike,
+        position: TradePosition = None,
+        signal: EntrySignal = None,
+    ) -> float:
         ...
 
-    @abstractmethod
-    def calculate_take_level(self, candle) -> float:
+    def calculate_take_level(
+        self,
+        price: float,
+        stop_loss: float,
+        rr_ratio: float,
+    ) -> float:
         ...
