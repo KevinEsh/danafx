@@ -1,0 +1,1 @@
+from trade.bots.abstract import AbstractTraderBot
