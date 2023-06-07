@@ -8,6 +8,9 @@ class AssetStateMachine:
     def __init__(self, init_state: AssetState = AssetState.NULL_POSITION) -> None:
         self._state = init_state
 
+    def set(self, state: AssetState) -> None:
+        self._state = state
+
     def next(self):
         # looking for buy/sell entries when there is no positions
         if self._state == AssetState.NULL_POSITION:
