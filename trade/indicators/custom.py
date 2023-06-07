@@ -5,6 +5,28 @@ from trade.metadata import CandleLike
 from datatools.custom import get_recarray, rolling_apply, drop_na
 
 
+def OC2(
+    open: CandleLike,
+    close: CandleLike,
+    asrecarray: bool = False
+) -> CandleLike:
+    """
+    Calculates the HL2 (high plus low divided by 2) for the given high and low candle-like data.
+
+    Args:
+        high (CandleLike): The high values of the candles.
+        low (CandleLike): The low values of the candles.
+        asrecarray (bool): If True, the output will have the same format as the input (i.e. same type and attributes).
+
+    Returns:
+        CandleLike: The calculated HL2 values.
+    """
+    oc2 = (open + close) / 2.
+
+    if asrecarray:
+        oc2 = get_recarray([oc2], names="oc2", formats="<f8")
+    return oc2
+
 def HL2(
     high: CandleLike,
     low: CandleLike,
@@ -79,6 +101,54 @@ def OHLC4(
         ohlc4 = get_recarray([ohlc4], names="ohlc4", formats="<f8")
     return ohlc4
 
+def HEIKINASHI(
+    open: CandleLike,
+    high: CandleLike,
+    low: CandleLike,
+    close: CandleLike,
+    asrecarray: bool = False,
+) -> CandleLike:
+    """
+    Computes the Heikin Ashi representation of a given set of open, high, low, and close prices.
+    
+    Args:
+        open (np.array): Array of open prices.
+        high (np.array): Array of high prices.
+        low (np.array): Array of low prices.
+        close (np.array): Array of close prices.
+        asrecarray (bool): If True, returns the result as a NumPy record array (recarray).
+                           If False, returns the result as a standard NumPy array.
+
+    Returns:
+        np.array or np.recarray: The Heikin Ashi representation of the input prices. The structure
+                                 of the output (i.e., whether it's a standard array or recarray) 
+                                 is determined by the `asrecarray` argument.
+    """
+    # Compute the Heikin Ashi close price
+    ha_close = OHLC4(open, high, low, close)
+
+    # Initialize a new array for the Heikin Ashi open prices
+    ha_open = np.zeros_like(open)
+
+    # Set the first Heikin Ashi open price to be the same as the original first open price
+    ha_open[0] = open[0]
+
+    # Loop through the rest of the array to calculate each Heikin Ashi open price
+    for i in range(1, len(open)):
+        ha_open[i] = (ha_open[i-1] + ha_close[i-1]) / 2
+    
+    if asrecarray:
+        # Convert the Heikin Ashi open and close prices, as well as the original high and low prices,
+        # into a NumPy record array
+        ha = get_recarray(
+            [ha_open, high, low, ha_close], 
+            names=["open", "high", "low", "close"], 
+            formats=["<f8","<f8","<f8","<f8"])
+    else:
+        # Use column_stack to reshape the data to (n, 4)
+        ha = np.column_stack((ha_open, high, low, ha_close))
+
+    return ha
 
 def PIVOTHIGH(
     high: CandleLike,
