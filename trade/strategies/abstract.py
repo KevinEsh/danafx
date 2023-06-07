@@ -546,18 +546,17 @@ class TrailingStopStrategy(AbstractStrategy):
         super().__init__()
 
     @abstractmethod
-    def calculate_stop_level(
+    def calculate_stop_levels(
         self,
         candle: CandleLike,
-        position: TradePosition = None,
         signal: EntrySignal = None,
     ) -> float:
         ...
 
-    def calculate_take_level(
-        self,
-        price: float,
-        stop_loss: float,
-        rr_ratio: float,
-    ) -> float:
-        ...
+    # def calculate_take_level(
+    #     self,
+    #     price: float,
+    #     stop_loss: float,
+    #     rr_ratio: float,
+    # ) -> float:
+    #     ...
