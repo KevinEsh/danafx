@@ -481,14 +481,14 @@ class Mt5Session(BrokerSession):
 
         # Transform Tuple into a DataFrame
         df_ticks = DataFrame(ticks)
-        df_ticks.set_index("time_msc", inplace=True)
+        # df_ticks.set_index("time_msc", inplace=True)
 
         # Convert number format of the date into date format
         if format_time:
-            df_ticks.index = to_datetime(df_ticks.index, unit="ms", utc=True)
-            df_ticks.index = df_ticks.index.tz_localize('Etc/GMT-3').tz_convert(tzone)
+            df_ticks["time_msc"] = to_datetime(df_ticks["time_msc"], unit="ms", utc=True)
+            df_ticks["time_msc"] = df_ticks["time_msc"].tz_localize('Etc/GMT-3').tz_convert(tzone)
 
-        return df_ticks if as_dataframe else df_ticks.to_records()
+        return df_ticks if as_dataframe else df_ticks.to_records(index=False)
 
     def get_candles(
         self,
@@ -522,14 +522,16 @@ class Mt5Session(BrokerSession):
 
         # Transform Tuple into a DataFrame
         df_rates = DataFrame(rates)
-        df_rates.set_index("time", inplace=True)
+        # df_rates.set_index("time", inplace=True)
 
         # Convert number format of the date into date format
         if format_time:
-            df_rates.index = to_datetime(df_rates.index, unit='s')
-            df_rates.index = df_rates.index.tz_localize('Etc/GMT-3').tz_convert(tzone)
+            df_rates['time'] = to_datetime(df_rates['time'], unit='s')
+            # Localize and convert the timezone without setting 'time' as the index
+            df_rates['time'] = df_rates['time'].dt.tz_localize('Etc/GMT-3').dt.tz_convert(tzone)
 
-        return df_rates if as_dataframe else df_rates.to_records()
+
+        return df_rates if as_dataframe else df_rates.to_records(index=False)
 
     def get_exchange_rate(self, symbol: str) -> float:
         # base_currency = symbol[3:]
