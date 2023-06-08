@@ -136,17 +136,21 @@ def HEIKINASHI(
     # Loop through the rest of the array to calculate each Heikin Ashi open price
     for i in range(1, len(open)):
         ha_open[i] = (ha_open[i-1] + ha_close[i-1]) / 2
-    
+
+    # Calculate Heikin Ashi high and low
+    ha_high = np.maximum.reduce([high, ha_open, ha_close])
+    ha_low = np.minimum.reduce([low, ha_open, ha_close])
+
     if asrecarray:
         # Convert the Heikin Ashi open and close prices, as well as the original high and low prices,
         # into a NumPy record array
         ha = get_recarray(
-            [ha_open, high, low, ha_close], 
+            [ha_open, ha_high, ha_low, ha_close], 
             names=["open", "high", "low", "close"], 
             formats=["<f8","<f8","<f8","<f8"])
     else:
         # Use column_stack to reshape the data to (n, 4)
-        ha = np.column_stack((ha_open, high, low, ha_close))
+        ha = np.column_stack((ha_open, ha_high, ha_low, ha_close))
 
     return ha
 
