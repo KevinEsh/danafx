@@ -16,6 +16,7 @@ class AbstractTraderBot(ABC):
         risk_params: dict,
         leap_in_secs: float = 30,
         interval: str = None,
+        adjust_spread: bool = True,
     ) -> None:
         super().__init__()
 
@@ -26,6 +27,7 @@ class AbstractTraderBot(ABC):
         self.timeframe = timeframe
         self.risk_params = risk_params  # TODO: mejor manera de guardar esto
         self.leap_in_secs = leap_in_secs
+        self.adjust_spread = adjust_spread
         self.state = AssetStateMachine()
 
         self.logger = get_logger()
