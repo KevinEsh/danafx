@@ -1,0 +1,1 @@
+from trade.strategies.scalping.minmax import MinMaxStrategy
