@@ -12,12 +12,14 @@ def make_figure():
 
 def add_ohcl_chart(fig, candles: CandleLike):
     fig.add_ohlc(
-        x=candles.index,
+        x=candles.time,
         open=candles.open,
         high=candles.high,
         low=candles.low,
         close=candles.close,
-        name="price"
+        name="ohlc",
+        legendgroup="candle",
+        legendgrouptitle_text="candle",
     )
 
     fig.update_yaxes(
@@ -53,7 +55,7 @@ def add_trending_line(
 
     bulls = np.where(above(series2, series1, band[1]), series1, np.nan)
     fig.add_scattergl(
-        x=candles.index,
+        x=candles.time,
         y=bulls,
         name="bullish",
         mode="markers+lines",
@@ -65,7 +67,7 @@ def add_trending_line(
 
     neutrals = np.where(onband(series2, series1, band), series1, np.nan)
     fig.add_scattergl(
-        x=candles.index,
+        x=candles.time,
         y=neutrals,
         name="neutral",
         mode="markers+lines",
@@ -77,7 +79,7 @@ def add_trending_line(
     # Above threshold
     bears = np.where(below(series2, series1, band[0]), series1, np.nan)
     fig.add_scattergl(
-        x=candles.index,
+        x=candles.time,
         y=bears,
         name="bearish",
         mode="markers+lines",
@@ -86,7 +88,7 @@ def add_trending_line(
         legendgroup=legendgroup,
     )
 
-    #fig.add_scatter(x=candles.index, y=series2)
+    #fig.add_scatter(x=candles.time, y=series2)
 
 
 def add_lines(
@@ -100,7 +102,7 @@ def add_lines(
         series = candles[source]
 
         fig.add_scattergl(
-            x=candles.index,
+            x=candles.time,
             y=series,
             name=source,
             mode="lines",
@@ -161,3 +163,53 @@ def add_session(fig, candles, session_hours: tuple[int, int] = (22, 10)):
             )
 
     fig.update_layout(shapes=shapes)
+
+def add_signals(
+    fig: go.Figure,
+    candles: CandleLike,
+    buys: np.ndarray, 
+    sells: np.ndarray
+)-> None:
+
+    buy_times = candles[buys].time
+    buy_prices = candles[buys].close
+
+    sell_times = candles[sells].time
+    sell_prices = candles[sells].close
+
+    fig.add_scatter(
+        x=buy_times,
+        y=buy_prices,
+        name="buy",
+        legendgroup="candle",
+        mode='markers',
+        opacity=0.8,
+        marker=dict(
+            size=8,
+            symbol="arrow-right",
+            # angle=45,
+            color="Green",
+            line=dict(
+                width=1,
+                color="midnightblue"
+            )
+        ),
+    )
+    fig.add_scatter(
+        x=sell_times,
+        y=sell_prices,
+        name="sell",
+        legendgroup="candle",
+        mode='markers',
+        opacity=0.8,
+        marker=dict(
+            size=8,
+            symbol="arrow-right",
+            # angle=135,
+            color="Red",
+            line=dict(
+                width=1,
+                color="midnightblue"
+            )
+        ),
+    )
