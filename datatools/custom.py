@@ -38,6 +38,44 @@ from numpy.core.records import fromarrays as get_recarray
 
 Number = Union[int, float]
 
+def shift(
+    arr: np.ndarray, 
+    n: int = 1, 
+    fill_value: Any = np.nan, 
+    inplace: bool = False
+) -> np.ndarray:
+    """
+    Shifts the elements in a numpy array.
+
+    Parameters:
+        arr (np.ndarray): The input array.
+        n (int, optional): The number of places to shift. Positive for right shift, negative for left shift. Defaults to 1.
+        fill_value (Any, optional): The value to fill the new spots with. Defaults to np.nan.
+        inplace (bool, optional): If True, performs operation in-place, modifying the original array. Otherwise, creates a new array. Defaults to False.
+
+    Returns:
+        np.ndarray: The array after shifting the elements.
+    """
+    if inplace:
+        if n > 0:
+            arr[n:] = arr[:-n]
+            arr[:n] = fill_value
+        elif n < 0:
+            arr[:n] = arr[-n:]
+            arr[n:] = fill_value
+        return arr
+    
+    if n > 0:
+        result = np.empty_like(arr)
+        result[:n] = fill_value
+        result[n:] = arr[:-n]
+    elif n < 0:
+        result = np.empty_like(arr)
+        result[n:] = fill_value
+        result[:n] = arr[-n:]
+    else:
+        result = arr
+    return result
 
 def addpop(arr: np.recarray, value: Number) -> np.ndarray:
     """Appends a value to the end of an array and pops the first value of the array.
