@@ -103,7 +103,7 @@ class AbstractStrategy(ABC):
     def __init__(self) -> None:
         super().__init__()
         self.min_bars = None
-        self.position = None
+        # self.position = None
         self.train_data = None
         self.train_labels = None
         self.compound_mode = False
@@ -119,8 +119,6 @@ class AbstractStrategy(ABC):
         return False
 
     def update_data(self, new_data: np.recarray) -> None:
-        # Define how the data should be updated. This new_data is only to update prediction
-
         # Append new data to the train array then delete a release memory from oldest one
         self.train_data = addpop_recarrays(self.train_data, new_data)
         #TODO: self.train_labels = addpop(self.train_labels, new_labels)
@@ -186,7 +184,6 @@ class TradingStrategy:
         self.last_entry_signals.pop(0)
 
         # If last signals in queue are all the same, return equivalent trade signal.
-        # If not, return neutral signal
         if all(signal == EntrySignal.BUY for signal in self.last_entry_signals):
             return EntrySignal.BUY
 
@@ -544,19 +541,33 @@ def recursive_batch_signals(tree):
 class TrailingStopStrategy(AbstractStrategy):
     def __init__(self):
         super().__init__()
+        self.rr_ratio = 0
 
-    @abstractmethod
     def calculate_stop_levels(
         self,
         candle: CandleLike,
         signal: EntrySignal = None,
     ) -> float:
+        # Calculate new stop level based on whether we are in a long or short position
+        adjustment = self.get_adjustment(candle)
+
+        if signal == EntrySignal.BUY:
+            stop_loss = candle.close - adjustment
+            take_profit = candle.close + self.rr_ratio * adjustment if self.rr_ratio else 0
+        elif signal == EntrySignal.SELL:
+            stop_loss = candle.close + adjustment
+            take_profit = candle.close - self.rr_ratio * adjustment if self.rr_ratio else 0
+        else:
+            raise ValueError("No valid signal provided")
+    
+        return stop_loss, take_profit
+
+    @abstractmethod
+    def get_adjustment(
+        self,
+        candle: CandleLike
+    ) -> float:
         ...
 
-    # def calculate_take_level(
-    #     self,
-    #     price: float,
-    #     stop_loss: float,
-    #     rr_ratio: float,
-    # ) -> float:
-    #     ...
+    # @abstractmethod
+    # def batch_adju
