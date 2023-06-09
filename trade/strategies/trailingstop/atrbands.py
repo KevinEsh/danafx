@@ -132,26 +132,6 @@ class AtrBandTrailingStop(TrailingStopStrategy):
             candle = self._batch[-self._lag]
 
         return self._multiplier * atr
-        
-    def calculate_stop_levels(
-        self,
-        candle: CandleLike,
-        signal: EntrySignal = None,
-    ) -> float:
-        
-        # Calculate new stop level based on whether we are in a long or short position
-        adjusment = self.get_adjustment(candle)
-
-        if signal == EntrySignal.BUY:
-            stop_loss = candle.close - adjusment
-            take_profit = candle.close + self.rr_ratio * adjusment if self.rr_ratio else 0
-        elif signal == EntrySignal.SELL:
-            stop_loss = candle.close + adjusment
-            take_profit = candle.close - self.rr_ratio * adjusment if self.rr_ratio else 0
-        else:
-            raise ValueError("No valid signal provided")
-    
-        return stop_loss, take_profit
 
     def batch_levels(self):
         ...
