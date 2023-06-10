@@ -111,12 +111,11 @@ class MinMaxStrategy(TradingStrategy):
             lows = MIN(self.train_data.low, self._window)
 
         if self._lag == 0:
-            print()
-            buy_signals = shift(highs, 1) + self._band[1] < highs
-            sell_signals = shift(lows, 1) + self._band[0] > lows
+            buy_signals = shift(highs) + self._band[1] < highs
+            sell_signals = shift(lows) + self._band[0] > lows
         else:
-            closes = shift(self.train_data.close, self._lag)
-            buy_signals = shift(highs, self._lag + 1) + self._band[1] < closes
-            sell_signals = shift(lows, self._lag + 1) + self._band[0] > closes
+            closes = self.train_data.close
+            buy_signals = shift(shift(highs) + self._band[1] < closes, self._lag)
+            sell_signals = shift(shift(lows) + self._band[0] > closes, self._lag)
 
         return get_recarray([buy_signals, sell_signals], names=["buy", "sell"])
