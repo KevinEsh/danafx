@@ -168,14 +168,15 @@ def add_signals(
     fig: go.Figure,
     candles: CandleLike,
     buys: np.ndarray, 
-    sells: np.ndarray
+    sells: np.ndarray,
+    source: str = "close",
 )-> None:
 
     buy_times = candles[buys].time
-    buy_prices = candles[buys].close
+    buy_prices = candles[buys][source]
 
     sell_times = candles[sells].time
-    sell_prices = candles[sells].close
+    sell_prices = candles[sells][source]
 
     fig.add_scatter(
         x=buy_times,
