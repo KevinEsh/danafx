@@ -132,7 +132,7 @@ class SingleTraderBot(AbstractTraderBot):
     def update_stop_levels(self, candle, position) -> tuple[float, ...]:
         # Calculate new stop level based on whether we are in a long or short position
 
-        lower_nb, upper_nb = self.trailing._band
+        lower_nb, upper_nb = self.trailing.neutral_band
         
         if position.type == EntrySignal.BUY.value:
             new_stop_loss, _ = self.trailing.calculate_stop_levels(candle, EntrySignal.BUY)
@@ -202,14 +202,14 @@ if __name__ == "__main__":
     # )
 
     strategy = MinMaxStrategy(
-        window=1,
-        lag=0,
-        band=(-0.0007, 0.0007)
+        window=2,
+        lag=1,
+        band=(-0.0002, 0.0002)
     )
 
     trailing = AtrBandTrailingStop(
         window=14,
-        multiplier=2,
+        multiplier=3,
         neutral_band=(-0.000, 0.000),
         rr_ratio=1.0,
         lag=1,
@@ -220,7 +220,13 @@ if __name__ == "__main__":
         "risk_pct": 0.01,
     }
 
-    trader = SingleTraderBot(symbol, "M5", risk_params, 5)
+    trader = SingleTraderBot(
+        symbol, 
+        "M5", 
+        risk_params, 
+        5,
+        "23:30-11:30"
+    )
     trader.set_broker(broker)
     trader.set_strategy(strategy)
     trader.set_trailing(trailing)
