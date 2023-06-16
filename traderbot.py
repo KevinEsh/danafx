@@ -45,7 +45,7 @@ class SingleTraderBot(AbstractTraderBot):
         last_traded_candle_time = None
 
         # Start a live trading session
-        while self._is_active():
+        while self.is_active():
             # Retrieve the latest candle data
             candles = self.broker.get_candles(self.symbol, self.timeframe, 2)
             last_candles, current_candle = candles[:-1], candles[-1]

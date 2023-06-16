@@ -24,7 +24,7 @@ class AbstractTraderBot(ABC):
         self.broker = None
         self.entry_strategy = None
         self.exit_strategy = None
-        self.trailing = None
+        self.trailing_strategy = None
         self.symbol = symbol
         self.timeframe = timeframe
         self.risk_params = risk_params  # TODO: mejor manera de guardar esto
@@ -40,21 +40,36 @@ class AbstractTraderBot(ABC):
             self.start_time = None
             self.end_time = None
         else:
-            self._set_active_interval(interval)
+            self.set_active_interval(interval)
 
     def set_entry_strategy(self, entry_strategy: TradingStrategy) -> None:
         self.entry_strategy = entry_strategy
+        self.logger.info(f"entry strategy set {entry_strategy}")
+
+    def reset_entry_strategy(self):
+        self.entry_strategy = None
+        self.logger.info('entry strategy reset')
 
     def set_exit_strategy(self, exit_strategy: TradingStrategy) -> None:
         self.exit_strategy = exit_strategy
+        self.logger.info(f"exit strategy set {exit_strategy}")
 
-    def set_trailing(self, trailing: TrailingStopStrategy) -> None:
-        self.trailing = trailing
+    def reset_exit_strategy(self):
+        self.exit_strategy = None
+        self.logger.info('exit strategy reset')
+
+    def set_trailing_strategy(self, trailing_strategy: TrailingStopStrategy) -> None:
+        self.trailing_strategy = trailing_strategy
+        self.logger.info(f"trailing strategy set {trailing_strategy}")
+    
+    def reset_trailing_strategy(self):
+        self.trailing_strategy = None
+        self.logger.info('trailing strategy reset')
 
     def set_broker(self, broker: BrokerSession) -> None:
         self.broker = broker
 
-    def _set_active_interval(self, interval: str, timezone: str = 'UTC'):
+    def set_active_interval(self, interval: str, timezone: str = 'UTC'):
         # Split the interval into start and end
         try:
             start, end = interval.split('-')
@@ -73,11 +88,12 @@ class AbstractTraderBot(ABC):
         self.start_time = start_hour * 60 + start_minute
         self.end_time = end_hour * 60 + end_minute
 
-    def _is_active(self) -> bool:
-        # Get the current time
+    def is_active(self) -> bool:
+        # If no interval has been place then is always active
         if self.start_time is None:
             return True
 
+        # asses current datetime if is still inside the interval
         now = dt.now()
         current_time = now.hour * 60 + now.minute
 
@@ -87,12 +103,11 @@ class AbstractTraderBot(ABC):
         else:  # Interval wraps around midnight
             return not (self.end_time <= current_time < self.start_time)
 
-    # @abstractmethod
-    # def start_session(
-    #     self,
-    #     login_settings: dict[str, str]
-    # ) -> None:
-    #     ...
+    @abstractmethod
+    def run(
+        self
+    ) -> None:
+        ...
 
     # @abstractmethod
     # def enable_symbols(
