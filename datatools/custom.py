@@ -114,6 +114,38 @@ def concat_recarrays(
         asrecarray=True,
         flatten=True)
 
+def find_supreme(arr, value):
+    """
+    Given a sorted numpy array and a value, this function finds the 
+    smallest value in the array that is greater than or equal to the value.
+
+    Parameters
+    ----------
+    arr : numpy.ndarray
+        A sorted numpy array.
+    value : int
+        The value to find the smallest supreme of in the array.
+
+    Returns
+    -------
+    int or None
+        The index of the smallest value in the array that is greater than or equal to
+        the value. If all elements in the array are less than the value, returns None.
+
+    Example
+    -------
+    >>> arr = np.array([1, 2, 3, 4, 5, 6])
+    >>> value = 4
+    >>> print(find_smallest_supreme(arr, value))
+    3
+    """
+    idx = np.searchsorted(arr, value, side='left')
+    if idx == len(arr) or arr[idx] < value:
+        return None
+    else:
+        return idx
+
+
 
 def expstep_range(
     start: Number,
