@@ -263,7 +263,6 @@ class EntryTradingStrategy(AbstractStrategy):
         self.last_entry_signals.pop(0)
 
         # If last signals in queue are all the same, return equivalent trade signal.
-        # If not, return neutral signal
         if all(signal == EntrySignal.BUY for signal in self.last_entry_signals):
             return EntrySignal.BUY
 
@@ -512,56 +511,11 @@ def recursive_batch_signals(tree):
 
     return np.rec.array((buy_signals, sell_signals), dtype=[('buy', bool), ('sell', bool)])
 
-    # Detect crossover
-    # if mav_short > mav_long:
-    #     return 1  # buy
-    # elif mav_short < mav_long:
-    #     return -1  # sell
-    # else:
-    #     return 0  # neutral
-
-    # # Function to update trailing stop if needed
-    # def update_trailing_stop(order, trailing_stop_pips, pip_size):
-    #     # Convert trailing_stop_pips into pips
-    #     trailing_stop_pips = trailing_stop_pips * pip_size
-    #     # Determine if Red or Green
-    #     # A Green Position will have a take_profit > stop_loss
-    #     if order[12] > order[11]:
-    #         # If Green, new_stop_loss = current_price - trailing_stop_pips
-    #         new_stop_loss = order[13] - trailing_stop_pips
-    #         # Test to see if new_stop_loss > current_stop_loss
-    #         if new_stop_loss > order[11]:
-    #             print("Update Stop Loss")
-    #             # Create updated values for order
-    #             order_number = order[0]
-    #             symbol = order[16]
-    #             # New take_profit will be the difference between new_stop_loss and old_stop_loss added to take profit
-    #             new_take_profit = order[12] + new_stop_loss - order[11]
-    #             print(new_take_profit)
-    #             # Send order to modify_position
-    #             broker.modify_position(order_number=order_number, symbol=symbol, new_stop_loss=new_stop_loss,
-    #                                    new_take_profit=new_take_profit)
-    #     elif order[12] < order[11]:
-    #         # If Red, new_stop_loss = current_price + trailing_stop_pips
-    #         new_stop_loss = order[13] + trailing_stop_pips
-    #         # Test to see if new_stop_loss < current_stop_loss
-    #         if new_stop_loss < order[11]:
-    #             print("Update Stop Loss")
-    #             # Create updated values for order
-    #             order_number = order[0]
-    #             symbol = order[16]
-    #             # New take_profit will be the difference between new_stop_loss and old_stop_loss subtracted from old take_profit
-    #             new_take_profit = order[12] - new_stop_loss + order[11]
-    #             print(new_take_profit)
-    #             # Send order to modify_position
-    #             broker.modify_position(order_number=order_number, symbol=symbol, new_stop_loss=new_stop_loss,
-    #                                    new_take_profit=new_take_profit)
-
 
 class TrailingStopStrategy(AbstractStrategy):
     def __init__(self):
         super().__init__()
-        self.rr_ratio = 0
+        self._rr_ratio = 0
 
     def calculate_stop_levels(
         self,
@@ -573,10 +527,10 @@ class TrailingStopStrategy(AbstractStrategy):
 
         if signal == EntrySignal.BUY:
             stop_loss = candle.close - adjustment
-            take_profit = candle.close + self.rr_ratio * adjustment if self.rr_ratio else 0
+            take_profit = candle.close + self._rr_ratio * adjustment if self._rr_ratio else 0
         elif signal == EntrySignal.SELL:
             stop_loss = candle.close + adjustment
-            take_profit = candle.close - self.rr_ratio * adjustment if self.rr_ratio else 0
+            take_profit = candle.close - self._rr_ratio * adjustment if self._rr_ratio else 0
         else:
             raise ValueError("No valid signal provided")
     
