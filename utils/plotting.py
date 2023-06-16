@@ -164,35 +164,34 @@ def add_session(fig, candles, session_hours: tuple[int, int] = (22, 10)):
 
     fig.update_layout(shapes=shapes)
 
-def add_signals(
+def add_entry_signals(
     fig: go.Figure,
     candles: CandleLike,
-    buys: np.ndarray, 
-    sells: np.ndarray,
+    entry_signals: np.recarray,
     source: str = "close",
     as_prices: bool = False,
 )-> None:
 
     if not as_prices:
-        buy_times = candles[buys].time
-        buy_prices = candles[buys][source]
+        buy_times = candles[entry_signals.buy].time
+        buy_prices = candles[entry_signals.buy][source]
 
-        sell_times = candles[sells].time
-        sell_prices = candles[sells][source]
+        sell_times = candles[entry_signals.sell].time
+        sell_prices = candles[entry_signals.sell][source]
     else:
-        buy_index = np.isnan(buys)
+        buy_index = ~np.isnan(entry_signals.buy)
         buy_times = candles[buy_index].time
-        buy_prices = buys[buy_index][source]
+        buy_prices = entry_signals.buy[buy_index]
 
-        sell_index = np.isnan(sells)
+        sell_index = ~np.isnan(entry_signals.sell)
         sell_times = candles[sell_index].time
-        sell_prices = sells[sell_index][source]
+        sell_prices = entry_signals.sell[sell_index]
 
     fig.add_scatter(
         x=buy_times,
         y=buy_prices,
         name="buy",
-        legendgroup="candle",
+        legendgroup="entries",
         mode='markers',
         opacity=0.8,
         marker=dict(
@@ -210,12 +209,71 @@ def add_signals(
         x=sell_times,
         y=sell_prices,
         name="sell",
-        legendgroup="candle",
+        legendgroup="entries",
         mode='markers',
         opacity=0.8,
         marker=dict(
             size=8,
             symbol="arrow-right",
+            # angle=135,
+            color="Red",
+            line=dict(
+                width=1,
+                color="midnightblue"
+            )
+        ),
+    )
+
+def add_exit_signals(
+    fig: go.Figure,
+    candles: CandleLike,
+    exit_signals: np.recarray,
+    source: str = "close",
+    as_prices: bool = False,
+):
+    if not as_prices:
+        buy_times = candles[exit_signals.buy].time
+        buy_prices = candles[exit_signals.buy][source]
+
+        sell_times = candles[exit_signals.sell].time
+        sell_prices = candles[exit_signals.sell][source]
+    else:
+        buy_index = ~np.isnan(exit_signals.buy)
+        buy_times = candles[buy_index].time
+        buy_prices = exit_signals.buy[buy_index]
+
+        sell_index = ~np.isnan(exit_signals.sell)
+        sell_times = candles[sell_index].time
+        sell_prices = exit_signals.sell[sell_index]
+
+    fig.add_scatter(
+        x=buy_times,
+        y=buy_prices,
+        name="buy",
+        legendgroup="exits",
+        mode='markers',
+        opacity=0.8,
+        marker=dict(
+            size=8,
+            symbol="x",
+            # angle=45,
+            color="Green",
+            line=dict(
+                width=1,
+                color="midnightblue"
+            )
+        ),
+    )
+    fig.add_scatter(
+        x=sell_times,
+        y=sell_prices,
+        name="sell",
+        legendgroup="exits",
+        mode='markers',
+        opacity=0.8,
+        marker=dict(
+            size=8,
+            symbol="x",
             # angle=135,
             color="Red",
             line=dict(
