@@ -131,7 +131,7 @@ class AtrBandTrailingStop(TrailingStopStrategy):
             atr = self._atrs[-self._lag]
             candle = self._batch[-self._lag]
 
-        return self._multiplier * atr
+        return self._multiplier * atr, candle
 
     def batch_levels(self):
         ...
