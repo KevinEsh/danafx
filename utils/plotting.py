@@ -170,13 +170,23 @@ def add_signals(
     buys: np.ndarray, 
     sells: np.ndarray,
     source: str = "close",
+    as_prices: bool = False,
 )-> None:
 
-    buy_times = candles[buys].time
-    buy_prices = candles[buys][source]
+    if not as_prices:
+        buy_times = candles[buys].time
+        buy_prices = candles[buys][source]
 
-    sell_times = candles[sells].time
-    sell_prices = candles[sells][source]
+        sell_times = candles[sells].time
+        sell_prices = candles[sells][source]
+    else:
+        buy_index = np.isnan(buys)
+        buy_times = candles[buy_index].time
+        buy_prices = buys[buy_index][source]
+
+        sell_index = np.isnan(sells)
+        sell_times = candles[sell_index].time
+        sell_prices = sells[sell_index][source]
 
     fig.add_scatter(
         x=buy_times,
