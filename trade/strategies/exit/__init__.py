@@ -1,0 +1,1 @@
+from trade.strategies.exit.dirchange import	DirectionChangeExitStrategy
