@@ -1,0 +1,42 @@
+{
+  "entry_strategies": {},
+  "trailing_strategy": {},
+  "exit_strategies": {},
+  "live_trading": {
+    "active_upto": "2022-11-01",
+    "active_time": 10,
+    "number_of_candles": 1,
+    "symbols_for_strategy": [
+      {
+        "EURUSD=X": "rsi",
+        "USDJPY.a": "rsi"
+      }
+    ],
+    "data": {
+      "start_from": "2022-11-01",
+      "end_upto": null,
+      "timeframe": "M1"
+    }
+  },
+
+  "backtest": {
+    "data_start": "2022-11-01",
+    "data_end": null,
+    "timeframe": "M30",
+    "number_of_candles": 1,
+    "symbols": ["USDJPY.a"],
+    "strategy": "rsi"
+  },
+
+  "strategies": [
+    {
+      "name": "rsi",
+      "pip_size": 0.01,
+      "categorical_parameters": {},
+      "parameters": {
+        "param1": null,
+        "param2": null
+      }
+    }
+  ]
+}
