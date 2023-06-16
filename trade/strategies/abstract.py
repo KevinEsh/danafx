@@ -132,12 +132,14 @@ class AbstractStrategy(ABC):
             params[name] = getattr(self, name)
         return params
 
-    def __repr__(self):
+    def __str__(self):
         params = self.get_params()
         str_params = ", ".join(
-            f"{name}={value:.3g}" for name, value in params.items())
+            f"{name}={value}" for name, value in params.items())
         return f"{self.__class__.__name__}({str_params})"
 
+    def __repr__(self) -> str:
+        return self.__str__()
 
 class TradingStrategy:
     def __init__(self):
@@ -201,9 +203,9 @@ class TradingStrategy:
         if exit_signal not in ExitSignal:
             raise ValueError(f"{exit_signal=} not recognized")
 
-    def get_exit_signal(self, candle: np.recarray):
+    def get_exit_signal(self, candle: np.recarray, position: TradePosition) -> ExitSignal:
         # Generate new signal and append it to the last signals queue.
-        exit_signal = self.generate_exit_signal(candle)
+        exit_signal = self.generate_exit_signal(candle, position)
         self.validate_exit_signal(exit_signal)
 
         self.last_exit_signals.append(exit_signal)
@@ -230,14 +232,14 @@ class TradingStrategy:
             params[name] = getattr(self, name)
         return params
 
-    def __repr__(self):
+    def __str__(self):
         params = self.get_params()
         str_params = ", ".join(
             f"{name}={value:.3g}" for name, value in params.items())
         return f"{self.__class__.__name__}({str_params})"
 
 
-class EntryTradingStrategy(TradingStrategy):
+class EntryTradingStrategy(AbstractStrategy):
     def __init__(self):
         super().__init__()
         # TODO: jugar con la cantidad de signals
@@ -271,12 +273,13 @@ class EntryTradingStrategy(TradingStrategy):
         return EntrySignal.NEUTRAL
 
 
-class ExitTradingStrategy(TradingStrategy):
+class ExitTradingStrategy(AbstractStrategy):
     def __init__(self):
         super().__init__()
         self.last_exit_signals = [None]
 
-    def generate_exit_signal(self, candle: np.recarray):
+    @abstractmethod
+    def generate_exit_signal(self, candle: np.recarray, position: TradePosition):
         # Define your entry signal generation logic on this method
         return ExitSignal.HOLD  # return hold signal by default
 
@@ -285,9 +288,9 @@ class ExitTradingStrategy(TradingStrategy):
         if exit_signal not in ExitSignal:
             raise ValueError(f"{exit_signal=} not recognized")
 
-    def get_exit_signal(self, candle: np.recarray):
+    def get_exit_signal(self, candle: np.recarray, position: TradePosition):
         # Generate new signal and append it to the last signals queue.
-        exit_signal = self.generate_exit_signal(candle)
+        exit_signal = self.generate_exit_signal(candle, position)
         self.validate_exit_signal(exit_signal)
 
         self.last_exit_signals.append(exit_signal)
@@ -304,7 +307,7 @@ class CompoundTradingStrategy(TradingStrategy):
     """A trading strategy that combines multiple entry strategies and optionally, exit strategies.
 
     Args:
-        entry_strategies (list[TradingStrategy]):
+        entry_strategy (list[TradingStrategy]):
             A list of TradingStrategy objects used to generate entry signals.
         exit_strategies (list[TradingStrategy], optional):
             A list of TradingStrategy objects used to generate exit signals. If not specified,
@@ -336,9 +339,6 @@ class CompoundTradingStrategy(TradingStrategy):
         min_bars_exit = recursive_min_bars(exit_strategy)
         self.min_bars = max(min_bars_entry, min_bars_exit)
 
-        # Set all strategies to compound mode
-        recursive_set_compound_mode(entry_strategy)
-        recursive_set_compound_mode(exit_strategy)
 
     def fit(self, train_data: np.recarray, train_labels: np.recarray = None):
         """Fits each of the strategies on the provided training data and labels.
@@ -347,8 +347,12 @@ class CompoundTradingStrategy(TradingStrategy):
             train_data (np.recarray): _description_
             train_labels (np.recarray, optional): _description_. Defaults to None.
         """
-        for stgy in self.entry_strategies:
-            stgy.fit(train_data, train_labels)
+        # Set all strategies to compound mode
+        super().fit(train_data, train_labels)
+        recursive_set_compound_mode(self.entry_strategy)
+        recursive_set_compound_mode(self.exit_strategy)
+        # recursive_fit(self.entry_strategy, train_data, train_labels)
+        # recursive_fit(self.exit_strategy, train_data, train_labels)
 
     def get_entry_signal(self):
         if self.exit_strategy is None:
@@ -360,7 +364,11 @@ class CompoundTradingStrategy(TradingStrategy):
             raise ValueError("No ExitStrategy was set")
             # return ExitSignal.HOLD
         return recursive_get_exit_signal(self.exit_strategy)
-
+    
+    def __str__(self):
+        entry_strategy = str(self.entry_strategy)
+        exit_strategy = str(self.exit_strategy)
+        return f"{self.__class__.__name__}({entry_strategy=}, {exit_strategy=})"
 
 def Priority(*args):
     return ('priority', list(args))
@@ -375,22 +383,34 @@ def Or(*args):
 
 
 def recursive_set_compound_mode(tree):
-    if isinstance(tree, TradingStrategy):  # the node is a strategy
+    if isinstance(tree, (TradingStrategy, ExitTradingStrategy, EntryTradingStrategy)):  # the node is a strategy
         tree.compound_mode = True
+        return
 
     for stgy in tree[1]:
         recursive_set_compound_mode(stgy)
 
 
 def recursive_min_bars(tree):
-    if isinstance(tree, TradingStrategy):  # the node is a strategy
+    if isinstance(tree, (TradingStrategy, ExitTradingStrategy, EntryTradingStrategy)):  # the node is a strategy
         return tree.min_bars
     # Return the maximum of all min_bars downstream
     return max(recursive_min_bars(stgy) for stgy in tree[1])
 
 
+def recursive_fit(tree, train_data, train_labels = None):
+    if isinstance(tree, (TradingStrategy, ExitTradingStrategy, EntryTradingStrategy)):  # the node is a strategy
+        tree.fit(train_data, train_labels)
+        return
+    
+    for stgy in tree[1]:
+        # print(train_data)
+        # print(stgy, train_data, train_labels)
+        recursive_fit(stgy, train_data, train_labels)
+
+
 def recursive_get_entry_signal(tree):
-    if isinstance(tree, TradingStrategy):  # the node is a strategy
+    if isinstance(tree, (TradingStrategy, ExitTradingStrategy, EntryTradingStrategy)):  # the node is a strategy
         return tree.get_entry_signal()
 
     operator, strategies = tree
@@ -425,7 +445,7 @@ def recursive_get_entry_signal(tree):
 
 
 def recursive_get_exit_signal(tree):
-    if isinstance(tree, TradingStrategy):  # the node is a strategy
+    if isinstance(tree, (TradingStrategy, ExitTradingStrategy, EntryTradingStrategy)):  # the node is a strategy
         return tree.get_exit_signal()
 
     operator, strategies = tree
@@ -456,7 +476,7 @@ def recursive_get_exit_signal(tree):
 
 
 def recursive_batch_signals(tree):
-    if isinstance(tree, TradingStrategy):  # the node is a strategy
+    if isinstance(tree, (TradingStrategy, ExitTradingStrategy, EntryTradingStrategy)):  # the node is a strategy
         return tree.batch_signals()
 
     operator, strategies = tree
@@ -549,7 +569,7 @@ class TrailingStopStrategy(AbstractStrategy):
         signal: EntrySignal = None,
     ) -> float:
         # Calculate new stop level based on whether we are in a long or short position
-        adjustment = self.get_adjustment(candle)
+        adjustment, candle = self.get_adjustment(candle)
 
         if signal == EntrySignal.BUY:
             stop_loss = candle.close - adjustment
