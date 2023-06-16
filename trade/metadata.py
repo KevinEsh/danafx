@@ -6,7 +6,7 @@ from pandas import Series
 
 CandleLike = Union[Series, recarray]
 TickLike = Union[Series, recarray]
-TradePosition = mt5.TradePosition
+TradePosition = mt5.TradePosition #ticket=425102858, time=1686945604, time_msc=1686945604865, time_update=1686945604, time_update_msc=1686945604865, type=1, magic=0, identifier=425102858, reason=0, volume=1.0, price_open=1.6921300000000001, sl=1.69791, tp=1.6844999999999999, price_current=1.6923300000000001, swap=0.0, profit=-11.82, symbol='GBPCAD', comment='', external_id=''
 TradeOrder = mt5.TradeOrder  # ticket=413560923, time_setup=1685669761, time_setup_msc=1685669761748, time_done=0, time_done_msc=0, time_expiration=0, type=5, type_time=0, type_filling=2, state=1, magic=0, position_id=0, position_by_id=0, reason=0, volume_initial=0.15, volume_current=0.15, price_open=2.04554, sl=0.0, tp=0.0, price_current=2.06425, price_stoplimit=0.0, symbol='GBPNZD', comment='', external_id='')
 
 
