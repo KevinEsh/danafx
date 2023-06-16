@@ -143,7 +143,7 @@ def find_supreme(arr, value):
     if idx == len(arr) or arr[idx] < value:
         return None
     else:
-        return idx
+        return arr[idx]
 
 
 
