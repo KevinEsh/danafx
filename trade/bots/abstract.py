@@ -17,17 +17,20 @@ class AbstractTraderBot(ABC):
         leap_in_secs: float = 30,
         interval: str = None,
         adjust_spread: bool = True,
+        update_stops: bool =  False,
     ) -> None:
         super().__init__()
 
         self.broker = None
-        self.strategy = None
+        self.entry_strategy = None
+        self.exit_strategy = None
         self.trailing = None
         self.symbol = symbol
         self.timeframe = timeframe
         self.risk_params = risk_params  # TODO: mejor manera de guardar esto
         self.leap_in_secs = leap_in_secs
         self.adjust_spread = adjust_spread
+        self.update_stops =  update_stops
         self.state = AssetStateMachine()
 
         self.logger = get_logger()
@@ -39,8 +42,11 @@ class AbstractTraderBot(ABC):
         else:
             self._set_active_interval(interval)
 
-    def set_strategy(self, strategy: TradingStrategy) -> None:
-        self.strategy = strategy
+    def set_entry_strategy(self, entry_strategy: TradingStrategy) -> None:
+        self.entry_strategy = entry_strategy
+
+    def set_exit_strategy(self, exit_strategy: TradingStrategy) -> None:
+        self.exit_strategy = exit_strategy
 
     def set_trailing(self, trailing: TrailingStopStrategy) -> None:
         self.trailing = trailing
