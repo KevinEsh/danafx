@@ -29,11 +29,12 @@ class SingleTraderBot(AbstractTraderBot):
             self.logger.info("looking for entry signals")
 
         # Calculate the minimal amount of data to get accurate predictions
-        min_bars = max(self.strategy.min_bars, self.trailing.min_bars)
+        min_bars = max((self.entry_strategy.min_bars, self.exit_strategy.min_bars, self.trailing.min_bars))
         train_data = self.broker.get_candles(self.symbol, self.timeframe, min_bars, 1)
 
         # Train the models
-        self.strategy.fit(train_data)
+        self.entry_strategy.fit(train_data)
+        self.exit_strategy.fit(train_data)
         self.trailing.fit(train_data)
 
     def run(self) -> None:
@@ -49,7 +50,8 @@ class SingleTraderBot(AbstractTraderBot):
             last_candles, current_candle = candles[:-1], candles[-1]
 
             # Always update data to save computational time and memory
-            self.strategy.update_data(last_candles)
+            self.entry_strategy.update_data(last_candles)
+            self.exit_strategy.update_data(last_candles)
             self.trailing.update_data(last_candles)
 
             # print(current_candle.close)
@@ -57,7 +59,8 @@ class SingleTraderBot(AbstractTraderBot):
 
             # If no position is on placed, create an entry signal
             if self.state.null_position:
-                entry_signal = self.strategy.get_entry_signal(current_candle)
+                entry_signal = self.entry_strategy.get_entry_signal(current_candle)
+                # print(entry_signal)
                 # print(entry_signal.name)
                 # entry_signal = EntrySignal.BUY
 
@@ -68,30 +71,31 @@ class SingleTraderBot(AbstractTraderBot):
                     self.state.next()
                     self.logger.info(f"{entry_signal.name.lower()} order created")
 
-            if self.state.awaiting_position:
-                positions = self.broker.get_positions(self.symbol)
+            positions = self.broker.get_positions(self.symbol)
 
-                if positions:
-                    self.position = positions[-1]
-                    self.state.next()
-                    self.logger.info(f"position {self.position.ticket} placed")
+            if self.state.awaiting_position and positions:
+                self.position = positions[-1]
+                self.logger.info(f"position {self.position.ticket} placed")
+                self.state.next()
 
-            elif self.state.on_position:
-                if self.broker.total_positions(self.symbol) == 0:
+            if self.state.on_position:
+                if not positions:
                     self.logger.info(f"position {self.position.ticket} closed on app")
+                    self.position = None
                     self.state.next()
                     continue
 
-                exit_signal = self.strategy.get_exit_signal(current_candle)
+                exit_signal = self.exit_strategy.get_exit_signal(current_candle, self.position)
 
                 if self.state.is_exit(exit_signal):
                     self.broker.close_position(self.position)
                     self.logger.info(f"position {self.position.ticket} closed by bot")
+                    self.position = None
                     self.state.next()
                     continue
 
-                if self.trailing is not None:
-                    stop_loss, take_profit = self.update_stop_levels(current_candle, self.position)
+                if self.update_stops: #self.trailing is not None:
+                    stop_loss, take_profit = self.recalculate_stop_levels(current_candle, self.position)
 
                     if abs(stop_loss - self.position.sl) >= 0.00001:
                         self.broker.modify_position(self.position, stop_loss, take_profit)
@@ -129,7 +133,7 @@ class SingleTraderBot(AbstractTraderBot):
 
         return open_price, lot_size, stop_loss, take_profit
 
-    def update_stop_levels(self, candle, position) -> tuple[float, ...]:
+    def recalculate_stop_levels(self, candle, position) -> tuple[float, ...]:
         # Calculate new stop level based on whether we are in a long or short position
 
         lower_nb, upper_nb = self.trailing.neutral_band
@@ -153,10 +157,7 @@ class SingleTraderBot(AbstractTraderBot):
                 return new_stop_loss, position.tp
             else:
                 return position.sl, position.tp
-            
 
-def break_stop(a, b, c):
-    return a < (b + c)
 
 if __name__ == "__main__":
     from utils.config import get_settings
@@ -165,13 +166,14 @@ if __name__ == "__main__":
     # from trade.strategies.momentum import RsiStrategy
     # from trade.strategies.trending import TrendlineBreakStrategy
     from trade.strategies import DualNadarayaKernelStrategy
-    from trade.strategies import MinMaxStrategy
+    from trade.strategies import MinMaxStrategy, CompoundTradingStrategy, Priority, And, Or
+    from trade.strategies.exit import DirectionChangeExitStrategy
     from trade.strategies.trailingstop import AtrBandTrailingStop
 
     login_settings = get_settings("settings/demo/login.json")
     # trading_settings = get_settings("settings/demo/trading.json")
 
-    symbol = "GBPUSD" #"EURUSD"
+    symbol = "EURUSD"
 
     # Login on a broker session
     broker = Mt5Session()
@@ -200,18 +202,36 @@ if __name__ == "__main__":
     #     lag=1,
     #     neutral_band=(-0.0001, 0.0001),
     # )
+    # engulfing_candle_strategy = MinMaxStrategy(
+    #     window=1,
+    #     lag=0,
+    #     band=(-0.0003, 0.0003),
+    #     neutral_length=0.00005
+    # )
 
-    strategy = MinMaxStrategy(
-        window=2,
+    basic_strategy = MinMaxStrategy(
+        window=1,
         lag=1,
-        band=(-0.0002, 0.0002)
+        band=(-0.00015, 0.00015),
+        # neutral_length=0.00015
+    )
+
+    # entry_strategy = Priority(
+    #     engulfing_candle_strategy,
+    #     basic_strategy,
+    # )
+
+    exit_strategy = DirectionChangeExitStrategy(
+        neutral_length=0.00015,
+        only_profit=True,
+        lag=1,
     )
 
     trailing = AtrBandTrailingStop(
         window=14,
-        multiplier=3,
+        multiplier=2.2,
         neutral_band=(-0.000, 0.000),
-        rr_ratio=1.0,
+        rr_ratio=3.0,
         lag=1,
     )
 
@@ -220,15 +240,22 @@ if __name__ == "__main__":
         "risk_pct": 0.01,
     }
 
+    # strategy = CompoundTradingStrategy(
+    #     entry_strategy,
+    #     exit_strategy
+    # )
+
     trader = SingleTraderBot(
-        symbol, 
-        "M5", 
-        risk_params, 
-        5,
-        "23:30-11:30"
+        symbol=symbol,
+        timeframe="M5",
+        risk_params=risk_params, 
+        leap_in_secs=2,
+        interval="23:30-11:30",
+        update_stops=True,
     )
     trader.set_broker(broker)
-    trader.set_strategy(strategy)
+    trader.set_entry_strategy(basic_strategy)
+    trader.set_exit_strategy(exit_strategy)
     trader.set_trailing(trailing)
 
     trader.run()
