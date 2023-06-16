@@ -23,8 +23,15 @@ class EntrySignal(Enum):
 
 
 class ExitSignal(Enum):
-    EXIT = 1
-    HOLD = 0
+    BUY = mt5.ORDER_TYPE_BUY
+    SELL = mt5.ORDER_TYPE_SELL
+    EXIT = mt5.ORDER_TYPE_CLOSE_BY
+    HOLD = -1
+
+
+class PositionType(Enum):
+    BUY = mt5.POSITION_TYPE_BUY
+    SELL = mt5.POSITION_TYPE_SELL
 
 
 class TimeFrames(Enum):
