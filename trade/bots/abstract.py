@@ -44,7 +44,7 @@ class AbstractTraderBot(ABC):
 
     def set_entry_strategy(self, entry_strategy: TradingStrategy) -> None:
         self.entry_strategy = entry_strategy
-        self.logger.info(f"entry strategy set {entry_strategy}")
+        self.logger.debug(f"entry strategy set {entry_strategy}")
 
     def reset_entry_strategy(self):
         self.entry_strategy = None
@@ -52,7 +52,7 @@ class AbstractTraderBot(ABC):
 
     def set_exit_strategy(self, exit_strategy: TradingStrategy) -> None:
         self.exit_strategy = exit_strategy
-        self.logger.info(f"exit strategy set {exit_strategy}")
+        self.logger.debug(f"exit strategy set {exit_strategy}")
 
     def reset_exit_strategy(self):
         self.exit_strategy = None
@@ -60,7 +60,7 @@ class AbstractTraderBot(ABC):
 
     def set_trailing_strategy(self, trailing_strategy: TrailingStopStrategy) -> None:
         self.trailing_strategy = trailing_strategy
-        self.logger.info(f"trailing strategy set {trailing_strategy}")
+        self.logger.debug(f"trailing strategy set {trailing_strategy}")
     
     def reset_trailing_strategy(self):
         self.trailing_strategy = None
