@@ -1,6 +1,6 @@
-from numpy import ndarray
-from datatools.custom import addpop, get_recarray
-from datatools.technical import crossingover, crossingunder
+from numpy import ndarray, recarray, where, NaN
+from datatools.custom import addpop, get_recarray, shift
+from datatools.technical import crossingover, crossingunder, above, onband, below
 
 from trade.metadata import CandleLike, EntrySignal
 from trade.indicators import RBFK, RQK, get_stable_min_bars
@@ -8,13 +8,13 @@ from trade.strategies.abstract import Hyperparameter, TradingStrategy
 
 
 class DualNadarayaKernelStrategy(TradingStrategy):
-    config_window_rqk = Hyperparameter("window_rqk", "numeric", (3, 1000))
-    config_window_rbfk = Hyperparameter("window_rbfk", "numeric", (3, 1000))
+    config_window_rqk = Hyperparameter("window_rqk", "numeric", (1, 1000))
+    config_window_rbfk = Hyperparameter("window_rbfk", "numeric", (1, 1000))
     config_alpha_rq = Hyperparameter("alpha_rq", "numeric", (0, 1e6))
     config_n_bars = Hyperparameter("n_bars", "numeric", (2, 5000))
-    config_lag = Hyperparameter("lag", "numeric", (0, 2))
-    config_neutral_band = Hyperparameter(
-        "neutral_band", "interval", (-1000, 1000))
+    config_lag = Hyperparameter("lag", "numeric", (0, 1))
+    config_band = Hyperparameter("band", "interval", (-1000, 1000))
+    config_mode = Hyperparameter("mode", "categoric", ("oncross", "holded"))
 
     def __init__(
         self,
@@ -23,23 +23,26 @@ class DualNadarayaKernelStrategy(TradingStrategy):
         alpha_rq: float = 1,
         n_bars: int = 25,
         lag: int = 0,
-        neutral_band: tuple = (0, 0),
+        band: tuple = (0, 0),
+        mode: str = "oncross",
     ):
         super().__init__()
         # Check if hyperparameters met the criteria
-        self.config_window_rqk._check_bounds(window_rqk, init=True)
-        self.config_window_rbfk._check_bounds(window_rbfk, init=True)
-        self.config_alpha_rq._check_bounds(alpha_rq, init=True)
-        self.config_n_bars._check_bounds(n_bars, init=True)
-        self.config_lag._check_bounds(lag, init=True)
-        self.config_neutral_band._check_bounds(neutral_band, init=True)
+        # self.config_window_rqk._check_bounds(window_rqk, init=True)
+        # self.config_window_rbfk._check_bounds(window_rbfk, init=True)
+        # self.config_alpha_rq._check_bounds(alpha_rq, init=True)
+        # self.config_n_bars._check_bounds(n_bars, init=True)
+        # self.config_lag._check_bounds(lag, init=True)
+        # self.config_band._check_bounds(band, init=True)
+        # self.config_mode._check_bounds(mode, init=True)
 
-        self._window_rqk = window_rqk
-        self._window_rbfk = window_rbfk
-        self._alpha_rq = alpha_rq
-        self._n_bars = n_bars
-        self._lag = lag
-        self._neutral_band = neutral_band
+        self.window_rqk = window_rqk
+        self.window_rbfk = window_rbfk
+        self.alpha_rq = alpha_rq
+        self.n_bars = n_bars
+        self.lag = lag
+        self.band = band
+        self.mode = mode
 
         # self._rqk_bars = get_stable_min_bars("RQK")
         # self._rbfk_bars = get_stable_min_bars("RBFK")
@@ -95,13 +98,22 @@ class DualNadarayaKernelStrategy(TradingStrategy):
         self._lag = lag
 
     @property
-    def neutral_band(self):
-        return self._neutral_band
+    def band(self):
+        return self._band
 
-    @neutral_band.setter
-    def neutral_band(self, neutral_band):
-        self.config_neutral_band._check_bounds(neutral_band)
-        self._neutral_band = neutral_band
+    @band.setter
+    def band(self, band):
+        self.config_band._check_bounds(band)
+        self._band = band
+
+    @property
+    def mode(self):
+        return self._mode
+
+    @mode.setter
+    def mode(self, mode):
+        self.config_mode._check_bounds(mode)
+        self._mode = mode
 
     def fit(
         self,
@@ -114,8 +126,7 @@ class DualNadarayaKernelStrategy(TradingStrategy):
         # Precalculate RQK & RBFK. This will save computational time
         self._rqk_queue = RQK(train_data.close, self._window_rqk, self._alpha_rq,
                               self._rqk_bars, dropna=True)
-        self._rbfk_queue = RBFK(train_data.close, (self._window_rbfk - self._lag),
-                                self._rbfk_bars, dropna=True)
+        self._rbfk_queue = RBFK(train_data.close, self._window_rbfk, self._rbfk_bars, dropna=True)
 
         # print(self._rqk_queue)
         # print(self._rbfk_queue)
@@ -173,21 +184,55 @@ class DualNadarayaKernelStrategy(TradingStrategy):
         #     f"[{line_rqk[0]=:.5f}, {line_rqk[1]=:.5f}][{line_rbfk[0]=:.5f}, {line_rbfk[1]=:.5f}]")
 
         # Detect tendency and return signal
-        if crossingover(line_rbfk, line_rqk, self._neutral_band[1])[-1]:
+        if crossingover(line_rbfk, line_rqk, self._band[1])[-1]:
             return EntrySignal.BUY
-        elif crossingunder(line_rbfk, line_rqk, self._neutral_band[0])[-1]:
+        elif crossingunder(line_rbfk, line_rqk, self._band[0])[-1]:
             return EntrySignal.SELL
         else:
             return EntrySignal.NEUTRAL
 
-    def batch_signals(self):
+    def batch_entry_signals(self, as_prices: bool = False) -> recarray:
         # Precalculate RQK & RBFK. This will save computational time
-        rqks = RQK(self.train_data.close, self._window_rqk, self._alpha_rq,
-                   self._rqk_bars)
-        rbfks = RBFK(self.train_data.close, (self._window_rbfk - self._lag),
-                     self._rbfk_bars)
+        if self._lag == 0:
+            raise NotImplementedError()
+        else:
+            closes = self.train_data.close
+            kernels = self.get_kernels()
+            
+        if self._mode == 'oncross':
+            buy_entry_signals = shift(crossingover(kernels.rbf, kernels.rq, self.band[1]), self._lag, False)
+            sell_entry_signals = shift(crossingunder(kernels.rbf, kernels.rq, self.band[0]), self._lag, False)
+        elif self._mode == 'holded':
+            buy_entry_signals = shift(above(kernels.rbf, kernels.rq, self.band[1]), self._lag, False)
+            sell_entry_signals = shift(below(kernels.rbf, kernels.rq, self.band[0]), self._lag, False)
 
-        buy_signals = crossingover(rqks, rbfks, self.neutral_band[1])
-        sell_signals = crossingunder(rqks, rbfks, self.neutral_band[0])
+        if not as_prices:
+            return get_recarray([buy_entry_signals, sell_entry_signals], names=["buy", "sell"])
 
-        return get_recarray([buy_signals, sell_signals], names=["buy", "sell"])
+        # Calculate an approximation of the entry price at the candle where the signal is activated
+        if self._lag == 0:
+            highs = self.train_data.high
+            lows = self.train_data.low
+            buy_entry_prices = where(buy_entry_signals, highs, NaN)
+            sell_entry_prices = where(sell_entry_signals, lows, NaN)
+        else:
+            opens = self.train_data.open
+            buy_entry_prices = where(buy_entry_signals, opens, NaN)
+            sell_entry_prices = where(sell_entry_signals, opens, NaN)        
+        
+        return get_recarray([buy_entry_prices, sell_entry_prices], names=["buy", "sell"])
+
+    def get_kernels(self) -> recarray:
+        closes = self.train_data.close
+        rq = RQK(closes, self._window_rqk, self._alpha_rq, self._rqk_bars)
+        rbf = RBFK(closes, self._window_rbfk, self._rbfk_bars)
+        return get_recarray([rq, rbf], names=["rq", "rbf"])
+    
+    def get_trendline(self):
+        kernels = self.get_kernels()
+        bullish = where(above(kernels.rbf, kernels.rq, self._band[1]), kernels.rq, NaN)
+        neutral = where(onband(kernels.rbf, kernels.rq, self._band), kernels.rq, NaN)
+        bearish = where(below(kernels.rbf, kernels.rq, self._band[0]), kernels.rq, NaN)
+        return get_recarray([bullish, neutral, bearish], names=['bullish', 'neutral', 'bearish'])
+
+        
