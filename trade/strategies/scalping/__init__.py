@@ -1,1 +1,1 @@
-from trade.strategies.scalping.minmax import MinMaxStrategy
+from trade.strategies.scalping.minmax import ZigZagEntryStrategy
