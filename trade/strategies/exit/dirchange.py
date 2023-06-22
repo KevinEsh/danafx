@@ -139,7 +139,7 @@ class DirectionChangeExitStrategy(ExitTradingStrategy):
         for b_entry in buy_entry_indexes:
             b_exit = find_supreme(buy_exit_indexes, b_entry + self._lag)
             if b_exit is not None:
-                buy_exit_signals[b_entry] = b_exit
+                buy_exit_signals[b_exit] = True
 
         for s_entry in sell_entry_indexes:
             s_exit = find_supreme(sell_exit_indexes, s_entry + self._lag)
