@@ -11,13 +11,13 @@ class SingleTraderBot(AbstractTraderBot):
         orders = self.broker.get_orders(self.symbol)
 
         # Check if there is a position in place at the beggining of the session. It will be monitored and modified
-        if positions > 0:
+        if positions:
             self.position = positions[-1]
             self.state.set(AssetState.ON_POSITION)
             self.logger.warning(f"position {self.position.ticket} found. Bot will monitor it")
 
         # Check if there is a pending order to be placed
-        elif orders > 0:
+        elif orders:
             # TODO: quiza algun dia se implemente un cancel_order early
             order = orders[-1]
             self.state.set(AssetState.WAITING_POSITION)
@@ -29,7 +29,11 @@ class SingleTraderBot(AbstractTraderBot):
             self.logger.info("looking for entry signals")
 
         # Calculate the minimal amount of data to get accurate predictions
-        min_bars = max((self.entry_strategy.min_bars, self.exit_strategy.min_bars, self.trailing.min_bars))
+        min_bars = max((
+            self.entry_strategy.min_bars, 
+            self.exit_strategy.min_bars, 
+            self.trailing_strategy.min_bars))
+
         train_data = self.broker.get_candles(self.symbol, self.timeframe, min_bars, 1)
 
         # Train the models
@@ -53,7 +57,7 @@ class SingleTraderBot(AbstractTraderBot):
             # Always update data to save computational time and memory
             self.entry_strategy.update_data(last_candles)
             self.exit_strategy.update_data(last_candles)
-            self.trailing.update_data(last_candles)
+            self.trailing_strategy.update_data(last_candles)
 
             # print(current_candle.close)
 
@@ -76,7 +80,7 @@ class SingleTraderBot(AbstractTraderBot):
                         self.logger.info(f"{entry_signal.name.lower()} order created")
                         self.state.next()
                     else:
-                        self.logger("attemp to trade the same candle twice blocked")
+                        self.logger.info("attemp to trade the same candle twice blocked")
 
             positions = self.broker.get_positions(self.symbol)
 
@@ -188,7 +192,7 @@ if __name__ == "__main__":
     login_settings = get_settings("settings/demo/login.json")
     # trading_settings = get_settings("settings/demo/trading.json")
 
-    symbol = "EURUSD"
+    symbol = "AUDUSD"
 
     # Login on a broker session
     broker = Mt5Session()
@@ -238,7 +242,7 @@ if __name__ == "__main__":
 
     exit_strategy = DirectionChangeExitStrategy(
         neutral_length=0.00015,
-        only_profit=True,
+        only_profit=False,
         lag=1,
     )
 
