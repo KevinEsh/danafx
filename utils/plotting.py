@@ -44,31 +44,23 @@ def add_ohcl_chart(fig, candles: CandleLike):
 def add_trending_line(
     fig: go.Figure,
     candles: CandleLike,
-    source1: str,
-    source2: str,
-    band: tuple[float, float] = (0, 0),
+    trendline: np.recarray,
     legendgroup: str = "regime",
 ):
-    # Full line
-    series1 = candles[source1]
-    series2 = candles[source2]
-
-    bulls = np.where(above(series2, series1, band[1]), series1, np.nan)
     fig.add_scattergl(
         x=candles.time,
-        y=bulls,
+        y=trendline.bullish,
         name="bullish",
         mode="markers+lines",
         line={'color': 'green', 'width': 1},
         marker={"color": "green", "size": 3},
         legendgroup=legendgroup,
-        legendgrouptitle_text=legendgroup,
+        # legendgrouptitle_text=legendgroup,
     )
 
-    neutrals = np.where(onband(series2, series1, band), series1, np.nan)
     fig.add_scattergl(
         x=candles.time,
-        y=neutrals,
+        y=trendline.neutral,
         name="neutral",
         mode="markers+lines",
         line={'color': 'grey', 'width': 1},
@@ -77,10 +69,9 @@ def add_trending_line(
     )
 
     # Above threshold
-    bears = np.where(below(series2, series1, band[0]), series1, np.nan)
     fig.add_scattergl(
         x=candles.time,
-        y=bears,
+        y=trendline.bearish,
         name="bearish",
         mode="markers+lines",
         line={'color': 'red', 'width': 1},
