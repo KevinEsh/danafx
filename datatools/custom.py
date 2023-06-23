@@ -114,6 +114,14 @@ def concat_recarrays(
         asrecarray=True,
         flatten=True)
 
+
+def find_index(arr, value):
+    if np.isin(value, arr):
+        return np.searchsorted(arr, value)
+    else:
+        return None
+
+
 def find_supreme(arr, value):
     """
     Given a sorted numpy array and a value, this function finds the 
@@ -144,7 +152,6 @@ def find_supreme(arr, value):
         return None
     else:
         return arr[idx]
-
 
 
 def expstep_range(
