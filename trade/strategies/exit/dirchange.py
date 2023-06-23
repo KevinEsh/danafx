@@ -3,7 +3,7 @@ import numpy as np
 from trade.metadata import CandleLike, TradePosition, ExitSignal, PositionType
 from trade.strategies.abstract import ExitTradingStrategy, Hyperparameter
 
-from datatools.custom import get_recarray, shift, find_supreme
+from datatools.custom import get_recarray, shift, find_supreme, find_index
 
 def get_exit_indexes(candles, lag, length):
     if lag == 0:
@@ -19,7 +19,7 @@ def get_exit_indexes(candles, lag, length):
         buy_exit_indexes = np.where(shift(~candle_directions & candle_breaks, lag, False))[0]
         sell_exit_indexes = np.where(shift(candle_directions & candle_breaks, lag, False))[0]
 
-    return get_recarray([buy_exit_indexes, sell_exit_indexes], names=['buy', 'sell'])
+    return buy_exit_indexes, sell_exit_indexes
 
 def get_entry_indexes(entry_signals, as_prices: bool):
     if not as_prices:
@@ -29,39 +29,67 @@ def get_entry_indexes(entry_signals, as_prices: bool):
         buy_entry_indexes = np.where(~np.isnan(entry_signals.buy))[0]
         sell_entry_indexes = np.where(~np.isnan(entry_signals.sell))[0]
 
-    return get_recarray([buy_entry_indexes, sell_entry_indexes], names=['buy', 'sell'])
+    return buy_entry_indexes, sell_entry_indexes
 
-def match_entries_to_exits(
+def match_signals(
     entry_indexes, 
-    exit_indexes, 
-    opens, 
-    lag: int, 
-    length: float,
-    as_prices: bool, 
+    exit_indexes,
+    n: int,
 ) -> np.recarray:
     # Create new arrays to store exit information
-    n = opens.shape[0]
-    buy_exit_signals = np.full(n, np.NaN)
-    sell_exit_signals = np.full(n, np.NaN)
+    exit_signals = np.full(n, np.NaN)
 
-    if as_prices:
-        exit_prices = np.full(n, np.NaN)
+    for entry_i in entry_indexes:
+        exit_i = find_supreme(exit_indexes, entry_i)
+        exit_i = n - 1 if (exit_i is None) else exit_i #TODO: poner un parametro para que el algo siempre cierre todas las operacion con la ultima vela
+        exit_signals[entry_i] = exit_i
 
-    for b_entry in entry_indexes.buy:
+    return exit_signals
 
-        b_exit = find_supreme(exit_indexes.buy, b_entry + lag)
-        b_exit = n - 1 if (b_exit is None) else b_exit #TODO: poner un parametro para que el algo siempre cierre todas las operacion con la ultima vela
-        buy_exit_signals[b_entry] = b_exit
-        if as_prices:
-            exit_prices[b_entry] = opens[b_exit] if lag else opens[b_exit] - length
+def match_prices(
+    entry_indexes, 
+    exit_indexes, 
+    candles,
+    length: float,
+) -> np.recarray:
+    # Create new arrays to store exit information
+    n = candles.shape[0]
+    exit_signals = np.full(n, np.NaN)
+    exit_prices = np.full(n, np.NaN)
 
-    if not as_prices:
-        return get_recarray([buy_exit_signals, sell_exit_signals], names=["buy", "sell"])
-    else:
-        return get_recarray([
-            buy_exit_signals, sell_exit_signals, 
-            sell_exits[0], sell_exits[1]], 
-            names=["buy", "buy_price", "sell", "sell_price"])
+    for entry_i in entry_indexes:
+        exit_i = find_supreme(exit_indexes, entry_i)
+        exit_i = n - 1 if (exit_i is None) else exit_i #TODO: poner un parametro para que el algo siempre cierre todas las operacion con la ultima vela
+        exit_signals[entry_i] = exit_i
+        exit_prices[entry_i] = candles[exit_i].open + length
+
+    return exit_signals, exit_prices
+
+def find_greater(arr, value, start: int = 0):
+    for i in range(start, arr.shape[0]):
+        if arr[i] > value:
+            return i
+    return None
+
+def match_prices_profit(
+    entry_indexes, 
+    exit_indexes, 
+    candles,
+    length: float,
+) -> np.recarray:
+    n = candles.shape[0]
+    exit_signals = np.full(n, np.NaN)
+    exit_prices = np.full(n, np.NaN)
+
+    all_exit_prices = candles[exit_signals].open + length
+
+    for entry_i in entry_indexes:
+        exit_i = find_supreme(exit_indexes, entry_i)
+        all_exit_prices[exit_signals >= entry_i]
+        exit_i = n - 1 if (exit_i is None) else exit_i #TODO: poner un parametro para que el algo siempre cierre todas las operacion con la ultima vela
+        a = find_index(exit_indexes, exit_i)
+        exit_signals[entry_i] = exit_i
+        exit_prices[entry_i] = candles[exit_i].open + length
 
 class DirectionChangeExitStrategy(ExitTradingStrategy):
     # config_window = Hyperparameter("window", "numeric", (2, 1000))
@@ -126,7 +154,6 @@ class DirectionChangeExitStrategy(ExitTradingStrategy):
         self._lag = lag
 
     def generate_exit_signal(self, candle: CandleLike, position: TradePosition) -> ExitSignal:
-
         # If lag is zero, consider the current candle; else, get the candle from lag periods ago
         if self._lag > 0:
             candle = self.train_data[-self._lag]
@@ -168,11 +195,24 @@ class DirectionChangeExitStrategy(ExitTradingStrategy):
         if n != m:
             raise ValueError(f"entry_signals lenght must be {m} but received {n}")
 
-        opens = self.train_data.open
-        entry_indexes = get_entry_indexes(entry_signals, as_prices)
-        exit_indexes = get_exit_indexes(self.train_data, self._lag, self._length)
+        buy_entry_indexes, sell_entry_indexes = get_entry_indexes(entry_signals, as_prices)
+        buy_exit_indexes, sell_exit_indexes = get_exit_indexes(self.train_data, self._lag, self._length)
 
-        return match_entries_to_exits(entry_indexes, exit_indexes, opens, self._lag, self._length, as_prices)
+        if not as_prices:
+            buy_exit_signals = match_signals(buy_entry_indexes + self._lag, buy_exit_indexes, n)
+            sell_exit_signals = match_signals(sell_entry_indexes + self._lag, sell_exit_indexes, n)
+            return get_recarray([buy_exit_signals, sell_exit_signals], names=["buy", "sell"])
+        else:
+            length = (length if self._lag == 0 else 0)
+            buy_exit_signals, buy_exit_prices = match_prices(buy_entry_indexes + self._lag, buy_exit_indexes, 
+                                                            self.train_data, -length)
+            sell_exit_signals, sell_exit_prices = match_prices(sell_entry_indexes + self._lag, sell_exit_indexes,
+                                                            self.train_data, length)
+            return get_recarray([
+                buy_exit_signals, buy_exit_prices,
+                sell_exit_signals, sell_exit_prices],
+                names=["buy", "buy_price", "sell", "sell_price"])
+
         # if self._lag == 0:
         #     buy_exit_prices = np.where(buy_exit_signals, opens - self.length, np.NaN)
         #     sell_exit_prices = np.where(sell_exit_signals, opens + self.length, np.NaN)
