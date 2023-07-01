@@ -122,7 +122,7 @@ def find_index(arr, value):
         return None
 
 
-def find_supreme(arr, value):
+def find_supreme(value, arr, as_index: bool = False):
     """
     Given a sorted numpy array and a value, this function finds the 
     smallest value in the array that is greater than or equal to the value.
@@ -151,7 +151,7 @@ def find_supreme(arr, value):
     if idx == len(arr) or arr[idx] < value:
         return None
     else:
-        return arr[idx]
+        return idx if as_index else arr[idx]
 
 
 def expstep_range(
