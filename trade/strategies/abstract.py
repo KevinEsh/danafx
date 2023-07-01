@@ -235,7 +235,7 @@ class TradingStrategy:
     def __str__(self):
         params = self.get_params()
         str_params = ", ".join(
-            f"{name}={value:.3g}" for name, value in params.items())
+            f"{name}={value}" for name, value in params.items())
         return f"{self.__class__.__name__}({str_params})"
 
 
