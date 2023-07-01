@@ -22,6 +22,8 @@ class FxFigure:
             name="ohlc",
             legendgroup="candle",
             legendgrouptitle_text="candle",
+            increasing_line_color='white',
+            decreasing_line_color= 'grey',
         )
 
         self.fig.update_yaxes(
