@@ -163,23 +163,22 @@ class FxFigure:
         self,
         candles: CandleLike,
         entry_signals: np.recarray,
-        as_prices: bool = False,
     )-> None:
 
-        if not as_prices:
-            buy_times = candles[entry_signals.buy].time
-            buy_prices = candles[entry_signals.buy].open
+        # if not as_prices:
+        #     buy_times = candles[entry_signals.buy_index].time
+        #     buy_prices = candles[entry_signals.buy].open
 
-            sell_times = candles[entry_signals.sell].time
-            sell_prices = candles[entry_signals.sell].open
-        else:
-            buy_index = ~np.isnan(entry_signals.buy)
-            buy_times = candles[buy_index].time
-            buy_prices = entry_signals.buy[buy_index]
+        #     sell_times = candles[entry_signals.sell].time
+        #     sell_prices = candles[entry_signals.sell].open
+        # else:
+        buy_indexes = entry_signals.buy_index
+        buy_times = candles[buy_indexes].time
+        buy_prices = entry_signals[buy_indexes].buy_price
 
-            sell_index = ~np.isnan(entry_signals.sell)
-            sell_times = candles[sell_index].time
-            sell_prices = entry_signals.sell[sell_index]
+        sell_indexes = entry_signals.sell_index
+        sell_times = candles[sell_indexes].time
+        sell_prices = entry_signals[sell_indexes].sell_price
 
         self.fig.add_scatter(
             x=buy_times,
@@ -223,25 +222,24 @@ class FxFigure:
         self,
         candles: CandleLike,
         exit_signals: np.recarray,
-        as_prices: bool = False,
         show_matches: bool = False,
     ):
-        if not as_prices:
-            buy_times = candles[exit_signals.buy].time
-            buy_prices = candles[exit_signals.buy].open
+        # if not as_prices:
+        #     buy_times = candles[exit_signals.buy].time
+        #     buy_prices = candles[exit_signals.buy].open
 
-            sell_times = candles[exit_signals.sell].time
-            sell_prices = candles[exit_signals.sell].open
-        else:
-            mask_buy = ~np.isnan(exit_signals.buy)
-            buy_indexes = exit_signals[mask_buy].buy.astype(int)
-            buy_prices = exit_signals[mask_buy].buy_price
-            buy_times = candles[buy_indexes].time
+        #     sell_times = candles[exit_signals.sell].time
+        #     sell_prices = candles[exit_signals.sell].open
+        # else:
+        mask_buy = ~np.isnan(exit_signals.buy_index)
+        buy_indexes = exit_signals[mask_buy].buy_index.astype(int)
+        buy_prices = exit_signals[mask_buy].buy_price
+        buy_times = candles[buy_indexes].time
 
-            mask_sell = ~np.isnan(exit_signals.sell)
-            sell_indexes = exit_signals[mask_sell].sell.astype(int)
-            sell_prices = exit_signals[mask_sell].sell_price
-            sell_times = candles[sell_indexes].time
+        mask_sell = ~np.isnan(exit_signals.sell_index)
+        sell_indexes = exit_signals[mask_sell].sell_index.astype(int)
+        sell_prices = exit_signals[mask_sell].sell_price
+        sell_times = candles[sell_indexes].time
 
             # print(buy_indexes, buy_prices, buy_times)
 
