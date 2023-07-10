@@ -102,7 +102,7 @@ class ZigZagEntryStrategy(EntryTradingStrategy):
             return EntrySignal.NEUTRAL
 
         
-    def batch_entry_signals(self, as_prices: bool = False) -> recarray:
+    def batch_entry_signals(self) -> recarray:
 
         # this is because MAX & MIN don't accept window = 1
         if self._window == 1:
@@ -115,26 +115,24 @@ class ZigZagEntryStrategy(EntryTradingStrategy):
         # lag=0 means on the current candle we will generate an entry signal.
         # First check if the current high/low breaks previous high/low + tolerance 
         if self._lag == 0:
-            buy_entry_signals = shift(highs) + self._band[1] < highs #shift because we take the high/low of the previous candle as reference
-            sell_entry_signals = shift(lows) + self._band[0] > lows
+            buy_entry_indexes = shift(highs) + self._band[1] < highs #shift because we take the high/low of the previous candle as reference
+            sell_entry_indexes = shift(lows) + self._band[0] > lows
 
         # lag>0 means the signal triggers at the close of the candle of lag times ago. 
         else:
             closes = self.train_data.close
-            buy_entry_signals = shift(shift(highs) + self._band[1] < closes, self._lag, False)
-            sell_entry_signals = shift(shift(lows) + self._band[0] > closes, self._lag, False)
-
-        #return boolean recarray of the buy and sell signals if as_prices=False
-        if not as_prices:
-            return get_recarray([buy_entry_signals, sell_entry_signals], names=["buy", "sell"])
+            buy_entry_indexes = shift(shift(highs) + self._band[1] < closes, self._lag, False)
+            sell_entry_indexes = shift(shift(lows) + self._band[0] > closes, self._lag, False)
 
         # Calculate an approximation of the entry price at the candle where the signal is activated
         if self._lag == 0:
-            buy_prices = where(buy_entry_signals, shift(highs) + self._band[1], NaN)
-            sell_prices = where(sell_entry_signals, shift(lows) + self._band[0], NaN)
+            buy_prices = where(buy_entry_indexes, shift(highs) + self._band[1], NaN)
+            sell_prices = where(sell_entry_indexes, shift(lows) + self._band[0], NaN)
         else:
-            buy_prices = where(buy_entry_signals, self.train_data.open, NaN)
-            sell_prices = where(sell_entry_signals, self.train_data.open, NaN)
+            buy_prices = where(buy_entry_indexes, self.train_data.open, NaN)
+            sell_prices = where(sell_entry_indexes, self.train_data.open, NaN)
 
-        return get_recarray([buy_prices, sell_prices], names=["buy", "sell"])
+        return get_recarray([
+            buy_entry_indexes, buy_prices, sell_entry_indexes, sell_prices], 
+            names=["buy_index", 'buy_price', "sell_index", 'sell_price'])
         
