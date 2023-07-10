@@ -222,7 +222,7 @@ class Mt5Session(BrokerSession):
         lot_size: float,
         stop_loss: float = None,
         take_profit: float = None,
-        deviation: int = 10,
+        deviation: int = 5,
     ) -> mt5.TradeOrder:
         """Create a new market order. This new order will be transactioned almost immidiately
 
@@ -278,7 +278,7 @@ class Mt5Session(BrokerSession):
     def close_position(
         self,
         position: mt5.TradePosition,
-        deviation: int = 10,
+        deviation: int = 5,
     ):
         order_type = OrderTypes._value2member_map_[position.type]
         inv_order_type = InverseOrderTypes[order_type.name]
@@ -481,7 +481,6 @@ class Mt5Session(BrokerSession):
 
         # Transform Tuple into a DataFrame
         df_ticks = DataFrame(ticks)
-        # df_ticks.set_index("time_msc", inplace=True)
 
         # Convert number format of the date into date format
         if format_time:
@@ -522,7 +521,6 @@ class Mt5Session(BrokerSession):
 
         # Transform Tuple into a DataFrame
         df_rates = DataFrame(rates)
-        # df_rates.set_index("time", inplace=True)
 
         # Convert number format of the date into date format
         if format_time:
