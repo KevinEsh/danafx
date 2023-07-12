@@ -1,9 +1,9 @@
-from numpy import ndarray, recarray, where, NaN
-from datatools.custom import addpop, get_recarray, shift
+import numpy as np
+from datatools.custom import addpop, get_recarray, shift, find_supreme
 from datatools.technical import crossingover, crossingunder, above, onband, below
 
 from trade.metadata import CandleLike, EntrySignal
-from trade.indicators import RBFK, RQK, get_stable_min_bars
+from trade.indicators import RBFK, RQK
 from trade.strategies.abstract import Hyperparameter, TradingStrategy
 
 
@@ -118,7 +118,7 @@ class DualNadarayaKernelStrategy(TradingStrategy):
     def fit(
         self,
         train_data: CandleLike,
-        train_labels: ndarray = None
+        train_labels: np.ndarray = None
     ) -> None:
         if not self.compound_mode:
             super().fit(train_data, train_labels)
@@ -184,45 +184,82 @@ class DualNadarayaKernelStrategy(TradingStrategy):
         #     f"[{line_rqk[0]=:.5f}, {line_rqk[1]=:.5f}][{line_rbfk[0]=:.5f}, {line_rbfk[1]=:.5f}]")
 
         # Detect tendency and return signal
-        if crossingover(line_rbfk, line_rqk, self._band[1])[-1]:
-            return EntrySignal.BUY
-        elif crossingunder(line_rbfk, line_rqk, self._band[0])[-1]:
-            return EntrySignal.SELL
-        else:
-            return EntrySignal.NEUTRAL
+        if self._mode == 'holded':
+            if above(line_rbfk, line_rqk, self._band[1])[-1]:
+                return EntrySignal.BUY
+            elif below(line_rbfk, line_rqk, self._band[0])[-1]:
+                return EntrySignal.SELL
+        elif self._mode == 'oncross':
+            if crossingover(line_rbfk, line_rqk, self._band[1])[-1]:
+                return EntrySignal.BUY
+            elif crossingunder(line_rbfk, line_rqk, self._band[0])[-1]:
+                return EntrySignal.SELL 
+        return EntrySignal.NEUTRAL
 
-    def batch_entry_signals(self, as_prices: bool = False) -> recarray:
+    def batch_entry_signals(self) -> np.recarray:
         # Precalculate RQK & RBFK. This will save computational time
         if self._lag == 0:
             raise NotImplementedError()
-        else:
-            closes = self.train_data.close
-            kernels = self.get_kernels()
+
+        kernels = self.get_kernels()
             
         if self._mode == 'oncross':
-            buy_entry_signals = shift(crossingover(kernels.rbf, kernels.rq, self.band[1]), self._lag, False)
-            sell_entry_signals = shift(crossingunder(kernels.rbf, kernels.rq, self.band[0]), self._lag, False)
+            buy_entry_indexes = shift(crossingover(kernels.rbf, kernels.rq, self.band[1]), self._lag, False)
+            sell_entry_indexes = shift(crossingunder(kernels.rbf, kernels.rq, self.band[0]), self._lag, False)
         elif self._mode == 'holded':
-            buy_entry_signals = shift(above(kernels.rbf, kernels.rq, self.band[1]), self._lag, False)
-            sell_entry_signals = shift(below(kernels.rbf, kernels.rq, self.band[0]), self._lag, False)
-
-        if not as_prices:
-            return get_recarray([buy_entry_signals, sell_entry_signals], names=["buy", "sell"])
+            buy_entry_indexes = shift(above(kernels.rbf, kernels.rq, self.band[1]), self._lag, False)
+            sell_entry_indexes = shift(below(kernels.rbf, kernels.rq, self.band[0]), self._lag, False)
 
         # Calculate an approximation of the entry price at the candle where the signal is activated
         if self._lag == 0:
             highs = self.train_data.high
             lows = self.train_data.low
-            buy_entry_prices = where(buy_entry_signals, highs, NaN)
-            sell_entry_prices = where(sell_entry_signals, lows, NaN)
+            buy_entry_prices = np.where(buy_entry_indexes, highs, np.NaN)
+            sell_entry_prices = np.where(sell_entry_indexes, lows, np.NaN)
         else:
             opens = self.train_data.open
-            buy_entry_prices = where(buy_entry_signals, opens, NaN)
-            sell_entry_prices = where(sell_entry_signals, opens, NaN)        
+            buy_entry_prices = np.where(buy_entry_indexes, opens, np.NaN)
+            sell_entry_prices = np.where(sell_entry_indexes, opens, np.NaN)        
         
-        return get_recarray([buy_entry_prices, sell_entry_prices], names=["buy", "sell"])
+        return get_recarray([
+            buy_entry_indexes, buy_entry_prices,
+            sell_entry_indexes, sell_entry_prices], 
+            names=['buy_index', 'buy_price', 'sell_index', 'sell_price'])
 
-    def get_kernels(self) -> recarray:
+    def batch_exit_signals(self, entry_signals: np.recarray) -> np.recarray:
+        if self._lag == 0:
+            raise NotImplementedError()
+
+        kernels = self.get_kernels()
+        opens = self.train_data.open
+
+        if self._mode == 'oncross':
+            buy_exit_indexes = shift(crossingunder(kernels.rbf, kernels.rq, self.band[0]), self._lag, False)
+            sell_exit_indexes = shift(crossingover(kernels.rbf, kernels.rq, self.band[1]), self._lag, False)
+        elif self._mode == 'holded':
+            buy_entry_indexes = shift(below(kernels.rbf, kernels.rq, self.band[0]), self._lag, False)
+            sell_entry_indexes = shift(above(kernels.rbf, kernels.rq, self.band[1]), self._lag, False)
+ 
+        buy_exit_indexes = np.full_like(entry_signals, np.NaN)
+        buy_exit_prices = np.full_like(entry_signals, np.NaN)
+
+        for entry_i in np.where(entry_signals.buy_index)[0]:
+            # entry_price = entry_signals.buy_price[entry_i]
+            # stop_level = entry_price - adj_stop
+            # take_level = entry_price + adj_take
+
+            valid_exits = buy_exit_indexes[entry_i:]
+            exit_i = np.argmax(valid_exits) + entry_i if np.any(valid_exits) else None
+        
+            if exit_i is None:
+                continue
+
+            buy_exit_indexes[entry_i] = exit_i
+            buy_exit_prices[entry_i] = opens[exit_i]
+
+
+        
+    def get_kernels(self) -> np.recarray:
         closes = self.train_data.close
         rq = RQK(closes, self._window_rqk, self._alpha_rq, self._rqk_bars)
         rbf = RBFK(closes, self._window_rbfk, self._rbfk_bars)
@@ -230,9 +267,9 @@ class DualNadarayaKernelStrategy(TradingStrategy):
     
     def get_trendline(self):
         kernels = self.get_kernels()
-        bullish = where(above(kernels.rbf, kernels.rq, self._band[1]), kernels.rq, NaN)
-        neutral = where(onband(kernels.rbf, kernels.rq, self._band), kernels.rq, NaN)
-        bearish = where(below(kernels.rbf, kernels.rq, self._band[0]), kernels.rq, NaN)
+        bullish = np.where(above(kernels.rbf, kernels.rq, self._band[1]), kernels.rq, np.NaN)
+        neutral = np.where(onband(kernels.rbf, kernels.rq, self._band), kernels.rq, np.NaN)
+        bearish = np.where(below(kernels.rbf, kernels.rq, self._band[0]), kernels.rq, np.NaN)
         return get_recarray([bullish, neutral, bearish], names=['bullish', 'neutral', 'bearish'])
 
         

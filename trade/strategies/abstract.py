@@ -535,11 +535,31 @@ class TrailingStopStrategy(AbstractStrategy):
             raise ValueError("No valid signal provided")
     
         return stop_loss, take_profit
+    
+    def calculate_stop_levels_2(
+        self,
+        candle: CandleLike,
+        signal: EntrySignal = None,
+    ) -> float:
+        # Calculate new stop level based on whether we are in a long or short position
+        adjustment, candle = self.get_adjustment(candle)
+
+        if signal == EntrySignal.BUY:
+            stop_loss = candle.close - adjustment
+            take_profit = candle.close + self._rr_ratio * adjustment if self._rr_ratio else 0
+        elif signal == EntrySignal.SELL:
+            stop_loss = candle.close + adjustment
+            take_profit = candle.close - self._rr_ratio * adjustment if self._rr_ratio else 0
+        else:
+            raise ValueError("No valid signal provided")
+
+        return stop_loss, take_profit
 
     @abstractmethod
     def get_adjustment(
         self,
-        candle: CandleLike
+        candle: CandleLike,
+        position: TradePosition,
     ) -> float:
         ...
 
