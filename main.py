@@ -1,13 +1,13 @@
 from utils.config import get_settings
 from trade.brokers import Mt5Session
-from trade.bots import SingleTraderBot
+from trade.bots import SingleTraderBot, BulkTraderBot
 # from trade.strategies.trending import DualMavStrategy
 # from trade.strategies.momentum import RsiStrategy
 # from trade.strategies.trending import TrendlineBreakStrategy
 from trade.strategies import DualNadarayaKernelStrategy
 from trade.strategies import ZigZagEntryStrategy, CompoundTradingStrategy, Priority, And, Or
 from trade.strategies.exit import DirectionChangeExitStrategy
-from trade.strategies.trailingstop import AtrBandTrailingStop
+from trade.strategies.trailingstop import AtrBandTrailingStop, SimpleTrailingStrategy
 
 login_settings = get_settings("settings/demo/login.json")
 # trading_settings = get_settings("settings/demo/trading.json")
@@ -33,14 +33,7 @@ broker.enable_symbols([symbol])
 #     neutral_band=(-0.000028, 0.000028),
 # )
 
-entry_strategy = DualNadarayaKernelStrategy(
-    window_rqk=30,
-    window_rbfk=30 - 2,
-    alpha_rq=17.7,
-    n_bars=30,
-    lag=1,
-    band=(-1.3177564853306123e-06, 1.3177564853306123e-06),
-)
+
 # engulfing_candle_strategy = MinMaxStrategy(
 #     window=1,
 #     lag=0,
@@ -60,18 +53,34 @@ entry_strategy = DualNadarayaKernelStrategy(
 #     basic_strategy,
 # )
 
-exit_strategy = DirectionChangeExitStrategy(
-    length=0.00017,
+# exit_strategy = DirectionChangeExitStrategy(
+#     length=0.00017,
+#     lag=1,
+#     only_profit=True,
+# )
+
+# trailing = AtrBandTrailingStop(
+#     window=14,
+#     multiplier=3.0,
+#     neutral_band=(-0.000, 0.000),
+#     rr_ratio=2.0,
+#     lag=1,
+# )
+
+entry_strategy = DualNadarayaKernelStrategy(
+    window_rqk=4,
+    window_rbfk=2,
+    alpha_rq=5,
+    n_bars=25,
     lag=1,
-    only_profit=True,
+    # band=(-1.0e-07, 1.0e-07),
+    mode='holded'
 )
 
-trailing = AtrBandTrailingStop(
-    window=14,
-    multiplier=2.2,
-    neutral_band=(-0.000, 0.000),
-    rr_ratio=3.0,
-    lag=1,
+trailing = SimpleTrailingStrategy(
+    pippetes_stop=4350,
+    pippetes_take=700,
+    point=0.00001,
 )
 
 risk_params = {
@@ -84,19 +93,19 @@ risk_params = {
 #     exit_strategy
 # )
 
-trader = SingleTraderBot(
+trader = BulkTraderBot(
     symbol=symbol,
-    timeframe="M3",
+    timeframe="M10",
     risk_params=risk_params, 
-    leap_in_secs=2,
-    interval="13:30-11:30",
-    update_stops=True,
+    leap_in_secs=30,
+    interval="23:30-11:30",
+    update_stops=False,
     adjust_spread=False,
 )
 
 trader.set_broker(broker)
 trader.set_entry_strategy(entry_strategy)
-trader.set_exit_strategy(exit_strategy)
+# trader.set_exit_strategy(exit_strategy)
 trader.set_trailing_strategy(trailing)
 
 trader.run()
