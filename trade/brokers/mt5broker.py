@@ -245,7 +245,7 @@ class Mt5Session(BrokerSession):
         lot_digits = count_decimals(symbol_info.volume_step)
 
         order_type = OrderTypes[order_type]
-        open_price = price if price != 0 else self.get_current_price(order_type)
+        open_price = price if price != 0 else self.get_current_price(symbol, order_type)
         # filling_type = symbol_info.filling_mode #TODO: averiguar como funciona esta wea
         # spread = symbol_info.spread
 
