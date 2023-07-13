@@ -68,12 +68,12 @@ broker.enable_symbols([symbol])
 # )
 
 entry_strategy = DualNadarayaKernelStrategy(
-    window_rqk=4,
-    window_rbfk=2,
+    window_rqk=7,
+    window_rbfk=5,
     alpha_rq=5,
     n_bars=25,
     lag=1,
-    # band=(-1.0e-07, 1.0e-07),
+    band=(-2.0e-4, 2.0e-4),
     mode='holded'
 )
 
@@ -98,7 +98,7 @@ trader = BulkTraderBot(
     timeframe="M10",
     risk_params=risk_params, 
     leap_in_secs=30,
-    interval="23:30-11:30",
+    interval="23:30-15:30",
     update_stops=False,
     adjust_spread=False,
 )
