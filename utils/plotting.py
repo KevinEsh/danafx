@@ -222,7 +222,6 @@ class FxFigure:
         self,
         candles: CandleLike,
         exit_signals: np.recarray,
-        show_matches: bool = False,
     ):
         # if not as_prices:
         #     buy_times = candles[exit_signals.buy].time
@@ -281,7 +280,66 @@ class FxFigure:
             ),
         )
 
-        if not show_matches:
-            return
-        
-        
+    def add_signals(
+        self,
+        candles: CandleLike,
+        entry_signals: np.recarray,
+        exit_signals: np.recarray,
+    ):
+        self._ploting_signals(candles, entry_signals.buy, exit_signals.buy, "buy")
+        self._ploting_signals(candles, entry_signals.sell, exit_signals.sell, "sell")
+
+    def _ploting_signals(self, candles, entry_signals, exit_signals, otype):
+        # checking equal entries and exits
+        n_entries = entry_signals.buy.shape[0]
+        n_exits = exit_signals.buy.shape[0]
+        if n_entries != n_exits:
+            raise ValueError(f"entry_signals.{otype} size ({n_entries},) must be equal to exit_signals.{otype} ({n_exits},)")
+
+        # Selecting the prices and times for the entries
+        entry_times = candles[entry_signals.index].time
+        entry_prices = entry_signals.price
+        # Selecting the prices and times for the exits
+        mask = ~np.isnan(exit_signals.index)
+        indexes = exit_signals[mask].index.astype(int)
+        exit_times = candles[indexes].time
+        exit_prices = exit_signals[mask].price
+
+        # Create a new array filled with np.nan this is for plotly makes gaps between
+        pair_times = np.full(n_entries + n_entries // 2, np.nan)
+        pair_prices = np.full(n_entries + n_entries // 2, np.nan)
+
+        # Fill the new array with values from the original array
+        pair_times[::3] = entry_times
+        pair_times[1::3] = exit_times
+
+        pair_prices[::3] = entry_prices
+        pair_prices[1::3] = exit_prices
+
+        marker_color = 'green' if otype == 'buy' else 'red'
+        line_color = 'forestgreen' if otype == 'buy' else 'firebrick'
+
+        self.fig.add_scatter(
+            x=pair_times,
+            y=pair_prices,
+            name=otype,
+            legendgroup='signals',
+            connectgaps=False,
+            mode='markers+lines',
+            line = dict(
+                color=line_color, 
+                width=2, 
+                dash='dot',
+                shape='vh'
+            ),
+            marker=dict(
+                size=8,
+                symbol='arrow-right',
+                #angle=45,
+                color=marker_color,
+                line=dict(
+                    width=1,
+                    color='midnightblue'
+                )
+            ),
+        )
